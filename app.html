@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Berkeley CRM</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="header">
+    <div class="header-logo" id="homeBtn" style="cursor:pointer;" title="Tillbaka till start">
+      <img src="https://cdn.berkeleycompany.com/preset:sharp/resize:fit:1700:0:0/width:1700/quality:70/gravity:sm/plain/https://api.berkeleycompany.com/storage/berkeley/logo/berkeley-logo-symbol.png" alt="Berkeley">
+      <h1>Berkeley CRM</h1>
+    </div>
+    <input type="text" id="search" placeholder="Sök kund...">
+    <button class="hbtn" id="dashBtn">Dashboard</button>
+    <button class="hbtn" id="exportBtn">Exportera</button>
+    <button class="hbtn" data-role="admin" id="adminBtn" style="display:none;">Admin</button>
+    <div class="header-spacer"></div>
+    <span class="header-user" id="userName"></span>
+    <button class="theme-btn" id="themeBtn" title="Byt ljust/mörkt läge">🌙</button>
+    <button class="hbtn" id="logoutBtn">Logga ut</button>
+  </div>
+
+  <!-- ═══ MAIN LAYOUT ═══ -->
+  <div class="main-wrap">
+
+    <!-- Sidebar / Dashboard -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h2>Dashboard</h2>
+        <p style="font-size:11px;color:var(--bm);" id="dashDate"></p>
+      </div>
+
+      <!-- Manager: salesperson filter -->
+      <div class="sidebar-section" data-role="manager" style="display:none;">
+        <h3>Säljare</h3>
+        <select id="spFilter" class="sp-filter-select"></select>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Översikt</h3>
+        <div class="stat-grid" id="statsGrid"></div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Filter</h3>
+        <div class="filter-bar" id="filterBar">
+          <div class="filter-chip active" data-filter="all">Alla</div>
+          <div class="filter-chip" data-filter="green"><span class="filter-dot" style="background:#2ECC71;"></span>0–30d</div>
+          <div class="filter-chip" data-filter="yellow"><span class="filter-dot" style="background:#EAC435;"></span>31–59d</div>
+          <div class="filter-chip" data-filter="orange"><span class="filter-dot" style="background:#E67E22;"></span>60–89d</div>
+          <div class="filter-chip" data-filter="red"><span class="filter-dot" style="background:#E74C3C;"></span>90+d</div>
+          <div class="filter-chip" data-filter="novisit"><span class="filter-dot" style="background:#EAC435;border:1px solid #ccc;"></span>Ej besökt</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Behöver besökas</h3>
+        <div id="toplist"></div>
+      </div>
+
+      <!-- Manager: comparison stats -->
+      <div class="sidebar-section" data-role="manager" style="display:none;">
+        <h3>Jämförelse</h3>
+        <div id="comparisonTable"></div>
+      </div>
+    </div>
+
+    <!-- Map area -->
+    <div class="map-container">
+      <div id="routeSummary" class="route-summary" style="display:none;"></div>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- ═══ CUSTOMER CARD PANEL ═══ -->
+  <div id="customerCard" class="customer-card-panel">
+    <div class="card-header">
+      <button class="card-close-btn" onclick="CRM.closeCard()">&#x2715;</button>
+    </div>
+    <div id="cardContent" class="card-body"></div>
+  </div>
+  <div id="cardOverlay" class="card-overlay" onclick="CRM.closeCard()"></div>
+
+  <!-- ═══ APP SCRIPT ═══ -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

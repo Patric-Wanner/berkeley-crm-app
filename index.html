@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Berkeley CRM — Logga in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Raleway', sans-serif;
+      background: #303336;
+      color: #f2f2f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      letter-spacing: .3px;
+    }
+
+    .login-box {
+      background: #fff;
+      color: #303336;
+      padding: 48px 40px;
+      width: 380px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .3);
+    }
+
+    .login-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .login-logo img {
+      height: 32px;
+    }
+
+    .login-logo h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      font-weight: 400;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .login-box label {
+      font-size: 11px;
+      color: #8a8d91;
+      display: block;
+      margin-bottom: 4px;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      font-weight: 400;
+    }
+
+    .login-box input {
+      width: 100%;
+      padding: 10px 14px;
+      font-size: 13px;
+      border: 1px solid #ddd;
+      border-radius: 0;
+      margin-bottom: 16px;
+      font-family: 'Raleway', sans-serif;
+      font-weight: 300;
+      outline: none;
+    }
+
+    .login-box input:focus {
+      border-color: #303336;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 12px;
+      background: #303336;
+      color: #f2f2f2;
+      border: none;
+      border-radius: 0;
+      cursor: pointer;
+      font-size: 11px;
+      font-family: 'Raleway', sans-serif;
+      font-weight: 400;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: background .2s;
+    }
+
+    .login-btn:hover {
+      background: #1c1d1f;
+    }
+
+    .login-btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .login-error {
+      display: none;
+      font-size: 12px;
+      color: #c0392b;
+      margin-bottom: 12px;
+    }
+
+    .login-error.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="https://cdn.berkeleycompany.com/preset:sharp/resize:fit:1700:0:0/width:1700/quality:70/gravity:sm/plain/https://api.berkeleycompany.com/storage/berkeley/logo/berkeley-logo-symbol.png" alt="Berkeley">
+      <h1>Berkeley CRM</h1>
+    </div>
+
+    <form id="loginForm">
+      <label>E-post</label>
+      <input id="email" type="email" placeholder="namn@berkeleycompany.com" required autocomplete="email">
+
+      <label>Lösenord</label>
+      <input id="password" type="password" placeholder="••••••••" required autocomplete="current-password">
+
+      <div class="login-error" id="loginError"></div>
+
+      <button type="submit" class="login-btn" id="loginBtn">Logga in</button>
+    </form>
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script type="module">
+    import { sb } from './js/supabase-client.js';
+
+    /* If already logged in, go straight to app */
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) window.location.href = 'app.html';
+
+    /* Login form */
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const errorEl = document.getElementById('loginError');
+      btn.disabled = true;
+      errorEl.classList.remove('show');
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errorEl.textContent = 'Fel e-post eller lösenord.';
+        errorEl.classList.add('show');
+        btn.disabled = false;
+      } else {
+        window.location.href = 'app.html';
+      }
+    });
+  </script>
+</body>
+</html>
