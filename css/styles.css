@@ -340,6 +340,7 @@ body {
 .stat-detail-list {
   max-height: 340px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .stat-detail-item {
@@ -370,6 +371,7 @@ body {
   color: var(--bm);
   white-space: nowrap;
   margin-left: 10px;
+  padding-right: 8px;
 }
 
 /* ── Toplist ────────────────────────────────────────── */
