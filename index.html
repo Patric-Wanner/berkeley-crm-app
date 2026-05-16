@@ -26,7 +26,32 @@
       color: #303336;
       padding: 48px 40px;
       width: 380px;
+      max-width: 100%;
       box-shadow: 0 8px 32px rgba(0, 0, 0, .3);
+    }
+
+    @media (max-width: 480px) {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      .login-box {
+        width: 100%;
+        padding: 0 28px;
+        box-shadow: none;
+      }
+      .login-logo {
+        margin-bottom: 40px;
+      }
+      .login-box input {
+        padding: 14px 14px;
+        font-size: 15px;
+      }
+      .login-btn {
+        padding: 16px;
+        font-size: 12px;
+        margin-top: 8px;
+      }
     }
 
     .login-logo {

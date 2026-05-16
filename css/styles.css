@@ -1125,57 +1125,74 @@ body.dark .sp-filter-select {
 
 @media (max-width: 768px) {
 
-  /* ── Header: compact mobile layout ──────────────── */
+  /* ── Header: two-row mobile layout ──────────────── */
 
   .header {
     flex-wrap: wrap;
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 8px 10px;
+    gap: 6px;
   }
 
   .header-logo {
-    margin-right: auto;
+    order: 1;
+  }
+
+  .header-logo img {
+    height: 20px;
   }
 
   .header h1 {
-    font-size: 13px;
+    font-size: 12px;
     letter-spacing: 1px;
   }
 
-  .header input[type="text"] {
-    order: 10;
-    width: 100%;
-    font-size: 13px;
-    padding: 9px 12px;
-  }
-
+  /* Push buttons to the right on first row */
   .header-spacer {
-    display: none;
+    order: 2;
+    flex: 1;
   }
 
-  .header-user {
-    display: none;
+  #dashBtn {
+    order: 3;
   }
 
-  .hbtn {
-    padding: 6px 10px;
-    font-size: 9px;
+  .theme-btn {
+    order: 4;
+    font-size: 14px;
+    padding: 2px 4px;
   }
 
+  #logoutBtn {
+    order: 5;
+  }
+
+  /* Hide non-essential on mobile */
   #exportBtn,
-  #adminBtn {
+  #adminBtn,
+  .header-user {
     display: none !important;
   }
 
-  /* ── Main layout: stack vertically ──────────────── */
-
-  .main-wrap {
-    flex-direction: column-reverse;
+  .hbtn {
+    padding: 5px 10px;
+    font-size: 9px;
+    letter-spacing: .8px;
   }
 
-  #map {
-    height: 100%;
-    min-height: 0;
+  /* Search: full width second row */
+  .header input[type="text"] {
+    order: 10;
+    width: 100%;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-color: rgba(255, 255, 255, .2);
+  }
+
+  /* ── Main layout ────────────────────────────────── */
+
+  .main-wrap {
+    flex-direction: column;
+    position: relative;
   }
 
   .map-container {
@@ -1183,39 +1200,68 @@ body.dark .sp-filter-select {
     min-height: 0;
   }
 
-  /* ── Sidebar: full-width overlay ────────────────── */
+  #map {
+    height: 100%;
+    min-height: 0;
+  }
+
+  /* ── Sidebar: slide-up overlay ──────────────────── */
 
   .sidebar {
     width: 100%;
     position: fixed;
-    top: 0;
+    bottom: 0;
     left: 0;
-    height: 100vh;
+    top: auto;
+    height: 80vh;
     z-index: 10000;
     border-left: none;
-    padding-top: 56px;
+    border-top: 1px solid var(--bb);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, .15);
+    overflow-y: auto;
   }
 
   .sidebar.open {
     display: block;
   }
 
-  /* Close area at top of sidebar */
   .sidebar-header {
-    position: relative;
+    position: sticky;
+    top: 0;
+    background: var(--bw);
+    z-index: 1;
+    padding-top: 20px;
   }
 
-  /* ── Legend: smaller on mobile ───────────────────── */
+  /* Drag handle indicator */
+  .sidebar-header::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--bm);
+    border-radius: 2px;
+    margin: 0 auto 12px;
+    opacity: .4;
+  }
+
+  /* ── Legend: compact ────────────────────────────── */
 
   .legend {
-    padding: 8px 12px;
+    padding: 6px 10px;
     font-size: 10px;
-    line-height: 1.8;
-    max-width: 140px;
+    line-height: 1.6;
+    max-width: 120px;
   }
 
   .legend h4 {
-    font-size: 12px;
+    font-size: 11px;
+    margin-bottom: 2px;
+  }
+
+  #legendCount {
+    display: none;
   }
 
   /* ── Popups: fit mobile width ───────────────────── */
@@ -1229,7 +1275,7 @@ body.dark .sp-filter-select {
     font-size: 14px;
   }
 
-  /* ── Customer card: full width ──────────────────── */
+  /* ── Customer card: full screen ─────────────────── */
 
   .customer-card-panel {
     width: 100%;
@@ -1248,7 +1294,11 @@ body.dark .sp-filter-select {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  /* ── Route summary: mobile-friendly ─────────────── */
+  .card-title {
+    font-size: 18px;
+  }
+
+  /* ── Route summary: mobile ──────────────────────── */
 
   .route-summary {
     bottom: 16px;
@@ -1261,25 +1311,54 @@ body.dark .sp-filter-select {
     font-size: 11px;
   }
 
-  /* ── Filter chips: scroll horizontal ────────────── */
+  /* ── Filter chips: horizontal scroll ────────────── */
 
   .filter-bar {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .filter-bar::-webkit-scrollbar {
+    display: none;
   }
 
   .filter-chip {
     flex-shrink: 0;
   }
 
-  /* ── Modal: full width on mobile ────────────────── */
+  /* ── Modal: full width ──────────────────────────── */
 
   .modal {
     width: 92%;
     max-width: 400px;
-    padding: 20px 20px;
+    padding: 20px;
+  }
+
+  /* ── Toplist: larger touch targets ──────────────── */
+
+  .toplist-item {
+    padding: 10px 0;
+  }
+
+  .toplist-name {
+    font-size: 13px;
+  }
+
+  .toplist-days {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+
+  /* ── Leaflet controls: touch-friendly ───────────── */
+
+  .leaflet-control-zoom a {
+    width: 36px !important;
+    height: 36px !important;
+    line-height: 36px !important;
+    font-size: 18px !important;
   }
 }
 
@@ -1287,18 +1366,12 @@ body.dark .sp-filter-select {
 
 @media (max-width: 400px) {
 
-  .header-logo img {
-    height: 20px;
-  }
-
   .header h1 {
-    font-size: 11px;
+    display: none;
   }
 
-  .hbtn {
-    padding: 5px 8px;
-    font-size: 8px;
-    letter-spacing: .8px;
+  .header-logo img {
+    height: 22px;
   }
 
   .legend {
@@ -1306,6 +1379,19 @@ body.dark .sp-filter-select {
   }
 
   .leaflet-popup-content {
-    width: 220px !important;
+    width: 230px !important;
+    padding: 12px !important;
+  }
+}
+
+/* ── Dark mode sidebar on mobile ──────────────────── */
+
+@media (max-width: 768px) {
+  body.dark .sidebar {
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, .5);
+  }
+
+  body.dark .sidebar-header {
+    background: #1c1d1f;
   }
 }
