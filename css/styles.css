@@ -171,7 +171,7 @@ body {
 /* ── Sidebar / Dashboard ────────────────────────────── */
 
 .sidebar {
-  width: 340px;
+  width: 420px;
   background: var(--bw);
   border-left: 1px solid var(--bb);
   overflow-y: auto;
@@ -185,7 +185,7 @@ body {
 }
 
 .sidebar-header {
-  padding: 16px 18px 12px;
+  padding: 16px 22px 12px;
   border-bottom: 1px solid var(--bb);
 }
 
@@ -201,7 +201,7 @@ body {
 }
 
 .sidebar-section {
-  padding: 14px 18px;
+  padding: 14px 22px;
   border-bottom: 1px solid var(--bb);
 }
 
@@ -338,7 +338,7 @@ body {
 }
 
 .stat-detail-list {
-  max-height: 280px;
+  max-height: 340px;
   overflow-y: auto;
 }
 
