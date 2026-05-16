@@ -234,6 +234,39 @@ body {
   border-color: var(--bd);
 }
 
+.filter-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.filter-row .sp-filter-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.filter-clear-btn {
+  background: none;
+  border: 1px solid var(--bb);
+  color: var(--bm);
+  cursor: pointer;
+  font-size: 14px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: all .2s;
+}
+
+.filter-clear-btn:hover {
+  background: var(--bd);
+  color: var(--bl);
+  border-color: var(--bd);
+}
+
 /* ── Stats grid ─────────────────────────────────────── */
 
 .stat-grid {
@@ -1121,6 +1154,17 @@ body.dark .sp-filter-select {
   background: #2a2b2d;
   color: #f2f2f2;
   border-color: #444;
+}
+
+body.dark .filter-clear-btn {
+  color: #888;
+  border-color: #444;
+}
+
+body.dark .filter-clear-btn:hover {
+  background: #f2f2f2;
+  color: #1c1d1f;
+  border-color: #f2f2f2;
 }
 
 /* ══════════════════════════════════════════════════════

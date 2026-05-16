@@ -196,11 +196,45 @@ function buildSalespersonFilter() {
       `<option value="${p.id}">${p.display_name}</option>`
     ).join('');
 
-  sel.addEventListener('change', () => refreshAll(sel.value));
+  sel.addEventListener('change', () => {
+    const clearBtn = document.getElementById('spFilterClear');
+    if (clearBtn) clearBtn.style.display = sel.value === 'all' ? 'none' : 'flex';
+    refreshAll(sel.value);
+  });
+
+  /* Clear button */
+  const clearBtn = document.getElementById('spFilterClear');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      sel.value = 'all';
+      clearBtn.style.display = 'none';
+      refreshAll('all');
+    });
+  }
 }
 
 /* ── City filter (all roles) ───────────────────────── */
 let _cityFilterBound = false;
+function applyCityFilter() {
+  const sel = document.getElementById('cityFilter');
+  const clearBtn = document.getElementById('cityFilterClear');
+  if (!sel) return;
+
+  customers = activeCity === 'all'
+    ? allCustomers
+    : allCustomers.filter(c => c.city === activeCity);
+  buildMarkers(customers, lastVisitMap, buildPopup);
+
+  /* Show/hide clear button */
+  if (clearBtn) clearBtn.style.display = activeCity === 'all' ? 'none' : 'flex';
+
+  /* Update dashboard stats for filtered set */
+  const filteredVisits = Object.keys(lastVisitMap)
+    .filter(cid => customers.some(c => c.id === cid))
+    .map(cid => ({ customer_id: cid, visited_at: lastVisitMap[cid] }));
+  updateDashboard(filteredVisits);
+}
+
 function buildCityFilter(custs) {
   const sel = document.getElementById('cityFilter');
   if (!sel) return;
@@ -214,18 +248,19 @@ function buildCityFilter(custs) {
   if (!_cityFilterBound) {
     sel.addEventListener('change', () => {
       activeCity = sel.value;
-      /* Re-apply city filter without re-fetching from DB */
-      customers = activeCity === 'all'
-        ? allCustomers
-        : allCustomers.filter(c => c.city === activeCity);
-      buildMarkers(customers, lastVisitMap, buildPopup);
-
-      /* Update dashboard stats for filtered set */
-      const filteredVisits = Object.keys(lastVisitMap)
-        .filter(cid => customers.some(c => c.id === cid))
-        .map(cid => ({ customer_id: cid, visited_at: lastVisitMap[cid] }));
-      updateDashboard(filteredVisits);
+      applyCityFilter();
     });
+
+    /* Clear button */
+    const clearBtn = document.getElementById('cityFilterClear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        activeCity = 'all';
+        sel.value = 'all';
+        applyCityFilter();
+      });
+    }
+
     _cityFilterBound = true;
   }
 }
@@ -532,7 +567,7 @@ function bindEvents() {
   /* Search */
   document.getElementById('search').addEventListener('input', e => search(e.target.value));
 
-  /* Home */
+  /* Home — reset view + search, keep filters */
   document.getElementById('homeBtn').addEventListener('click', () => {
     resetView();
     document.getElementById('search').value = '';
@@ -542,13 +577,6 @@ function bindEvents() {
       document.getElementById('dashBtn').classList.remove('active');
       invalidateSize();
     }
-    setFilter('all');
-    activeCity = 'all';
-    const citySel = document.getElementById('cityFilter');
-    if (citySel) citySel.value = 'all';
-    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-    document.querySelector('.filter-chip[data-filter="all"]')?.classList.add('active');
-    refreshAll();
   });
 
   /* Dashboard toggle */

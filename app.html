@@ -63,15 +63,21 @@
         <!-- Manager: salesperson filter -->
         <div class="sidebar-section" data-role="manager" style="display:none;">
           <h3>Säljare</h3>
-          <select id="spFilter" class="sp-filter-select"></select>
+          <div class="filter-row">
+            <select id="spFilter" class="sp-filter-select"></select>
+            <button class="filter-clear-btn" id="spFilterClear" title="Rensa" style="display:none;">&#x2715;</button>
+          </div>
         </div>
 
         <!-- City filter (all roles) -->
         <div class="sidebar-section">
           <h3>Ort</h3>
-          <select id="cityFilter" class="sp-filter-select">
-            <option value="all">Alla orter</option>
-          </select>
+          <div class="filter-row">
+            <select id="cityFilter" class="sp-filter-select">
+              <option value="all">Alla orter</option>
+            </select>
+            <button class="filter-clear-btn" id="cityFilterClear" title="Rensa" style="display:none;">&#x2715;</button>
+          </div>
         </div>
 
         <div class="sidebar-section">
