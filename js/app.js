@@ -54,6 +54,7 @@ async function init() {
   /* Sync fixed-header offset on mobile */
   syncHeaderOffset();
   window.addEventListener('resize', syncHeaderOffset);
+  window.addEventListener('orientationchange', () => setTimeout(syncHeaderOffset, 200));
 }
 
 /* ── Mobile: sync main-wrap padding to header height ── */
@@ -66,7 +67,7 @@ function syncHeaderOffset() {
     wrap.style.paddingTop = h + 'px';
     /* Sidebar must not extend behind the header */
     const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.style.maxHeight = `calc(100dvh - ${h + 8}px)`;
+    if (sidebar) sidebar.style.maxHeight = (window.innerHeight - h - 8) + 'px';
   }
 
   /* Block pull-to-refresh / overscroll on header (Safari needs this) */

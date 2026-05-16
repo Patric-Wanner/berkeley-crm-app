@@ -1210,7 +1210,8 @@ body.dark .sp-filter-select {
   }
 
   body {
-    height: 100dvh;
+    height: 100vh;
+    height: -webkit-fill-available;
     overflow: hidden;
     overscroll-behavior: none;
     position: fixed;
@@ -1245,7 +1246,7 @@ body.dark .sp-filter-select {
     bottom: 0;
     left: 0;
     top: auto;
-    max-height: calc(100dvh - 96px);
+    max-height: calc(100vh - 96px); /* JS overrides with exact value */
     z-index: 10000;
     border-left: none;
     border-top: 1px solid var(--bb);
