@@ -301,8 +301,7 @@ function updatePlannedVisits() {
     return `<div class="planned-item">
       <span class="toplist-name" onclick="CRM.openCard('${nv.customer_id}')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
       <input type="date" class="planned-date-input" value="${d}" onchange="CRM.dashChangeNextVisit('${nv.customer_id}', this.value)" title="Ändra datum">
-      <span class="planned-date ${cls}">${label}</span>
-      <button class="route-stop-remove" onclick="CRM.dashRemoveNextVisit('${nv.customer_id}')" title="Ta bort">&#x2715;</button>
+      <button class="route-stop-remove" onclick="CRM.dashRemoveNextVisit('${nv.customer_id}')" title="Ta bort planerat besök">&#x2715;</button>
     </div>`;
   }).join('');
 }
