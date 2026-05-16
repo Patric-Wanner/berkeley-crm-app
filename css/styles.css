@@ -1132,16 +1132,10 @@ body.dark .sp-filter-select {
   /* ── Header: two-row mobile layout ──────────────── */
 
   .header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
     flex-wrap: wrap;
     padding: 8px 10px;
     gap: 6px;
     z-index: 10001;
-    touch-action: none;
-    overscroll-behavior: none;
   }
 
   .header-logo {
@@ -1201,31 +1195,14 @@ body.dark .sp-filter-select {
 
   /* ── Main layout ────────────────────────────────── */
 
-  html {
+  html, body {
     overflow: hidden;
     overscroll-behavior: none;
-    position: fixed;
-    width: 100%;
     height: 100%;
-  }
-
-  body {
-    height: 100vh;
-    height: -webkit-fill-available;
-    overflow: hidden;
-    overscroll-behavior: none;
-    position: fixed;
-    width: 100%;
   }
 
   .main-wrap {
     flex-direction: column;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    padding-top: 88px; /* space for fixed header */
   }
 
   .map-container {
@@ -1245,8 +1222,8 @@ body.dark .sp-filter-select {
     position: fixed;
     bottom: 0;
     left: 0;
-    top: 96px; /* JS overrides with exact header height */
-    z-index: 10000;
+    height: 70vh;
+    z-index: 10002;
     border-left: none;
     border-top: 1px solid var(--bb);
     border-radius: 12px 12px 0 0;
@@ -1269,24 +1246,25 @@ body.dark .sp-filter-select {
 
   /* Close button visible on mobile */
   .sidebar-close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     background: none;
     border: 1px solid var(--bb);
-    font-size: 28px;
+    font-size: 28px !important;
     color: var(--bd);
     cursor: pointer;
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    padding: 0;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     position: relative;
     z-index: 2;
     transition: background .2s, color .2s;
+    flex-shrink: 0 !important;
   }
 
   .sidebar-close-btn:hover,

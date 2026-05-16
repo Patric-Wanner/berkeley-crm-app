@@ -51,31 +51,8 @@ async function init() {
   /* Event bindings */
   bindEvents();
 
-  /* Sync fixed-header offset on mobile */
-  syncHeaderOffset();
-  window.addEventListener('resize', syncHeaderOffset);
-  window.addEventListener('orientationchange', () => setTimeout(syncHeaderOffset, 200));
 }
 
-/* ── Mobile: sync main-wrap padding to header height ── */
-function syncHeaderOffset() {
-  if (window.innerWidth > 768) return;
-  const header = document.querySelector('.header');
-  const wrap = document.querySelector('.main-wrap');
-  if (header && wrap) {
-    const h = header.offsetHeight;
-    wrap.style.paddingTop = h + 'px';
-    /* Sidebar starts right below the header */
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.style.top = h + 'px';
-  }
-
-  /* Block pull-to-refresh / overscroll on header (Safari needs this) */
-  if (!header._touchBlocked) {
-    header.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-    header._touchBlocked = true;
-  }
-}
 
 /* ── Role-based UI visibility ───────────────────────── */
 function initRoleUI(role) {
@@ -532,7 +509,6 @@ function bindEvents() {
 
   /* Dashboard toggle */
   document.getElementById('dashBtn').addEventListener('click', () => {
-    syncHeaderOffset();
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('open');
     document.getElementById('dashBtn').classList.toggle('active');
