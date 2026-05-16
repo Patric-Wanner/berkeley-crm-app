@@ -62,7 +62,11 @@ function syncHeaderOffset() {
   const header = document.querySelector('.header');
   const wrap = document.querySelector('.main-wrap');
   if (header && wrap) {
-    wrap.style.paddingTop = header.offsetHeight + 'px';
+    const h = header.offsetHeight;
+    wrap.style.paddingTop = h + 'px';
+    /* Sidebar must not extend behind the header */
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.style.maxHeight = `calc(100dvh - ${h + 8}px)`;
   }
 
   /* Block pull-to-refresh / overscroll on header (Safari needs this) */

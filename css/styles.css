@@ -1245,7 +1245,7 @@ body.dark .sp-filter-select {
     bottom: 0;
     left: 0;
     top: auto;
-    height: 80vh;
+    max-height: calc(100dvh - 96px);
     z-index: 10000;
     border-left: none;
     border-top: 1px solid var(--bb);
