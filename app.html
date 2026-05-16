@@ -48,6 +48,7 @@
     <div class="header-spacer"></div>
     <span class="header-user" id="userName"></span>
     <button class="theme-btn" id="themeBtn" title="Byt ljust/mörkt läge">🌙</button>
+    <button class="hbtn" id="changePwBtn">Byt lösenord</button>
     <button class="hbtn" id="logoutBtn">Logga ut</button>
   </div>
 
@@ -231,6 +232,24 @@
       <div class="modal-buttons">
         <button class="btn-cancel" onclick="CRM.closeEditCustomer()">Avbryt</button>
         <button class="btn-save" onclick="CRM.saveEditCustomer()">Spara</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CHANGE PASSWORD MODAL ═══ -->
+  <div id="changePwModal" class="modal-overlay">
+    <div class="modal" style="width:400px;max-width:95%;">
+      <h3>Byt lösenord</h3>
+      <div style="margin-top:16px;">
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--bm);display:block;margin-bottom:4px;">Nytt lösenord</label>
+        <input id="newPw" type="password" class="card-input" placeholder="Minst 6 tecken" style="margin-bottom:12px;">
+        <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--bm);display:block;margin-bottom:4px;">Bekräfta lösenord</label>
+        <input id="confirmPw" type="password" class="card-input" placeholder="Upprepa lösenord" style="margin-bottom:12px;">
+        <div id="changePwMsg" style="display:none;font-size:12px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="popup-btn" id="changePwSave" style="flex:1;">Spara</button>
+          <button class="popup-btn-outline" onclick="CRM.closeChangePw()" style="flex:1;">Avbryt</button>
+        </div>
       </div>
     </div>
   </div>

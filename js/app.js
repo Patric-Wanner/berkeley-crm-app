@@ -45,7 +45,15 @@ async function init() {
   if (wasDark) document.getElementById('themeBtn').textContent = '☀️';
 
   await refreshAll();
-  onAuthChange();
+  onAuthChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      CRM.openChangePw();
+      const msg = document.getElementById('changePwMsg');
+      msg.textContent = 'Ange ditt nya lösenord.';
+      msg.style.color = 'var(--bd)';
+      msg.style.display = 'block';
+    }
+  });
   bindEvents();
 }
 
@@ -801,6 +809,27 @@ window.CRM = {
     document.getElementById('rapportRevenueTab').style.display = tab === 'revenue' ? 'block' : 'none';
   },
 
+  /* Change password */
+  openChangePw() {
+    document.getElementById('changePwModal').classList.add('active');
+    document.getElementById('newPw').value = '';
+    document.getElementById('confirmPw').value = '';
+    const msg = document.getElementById('changePwMsg');
+    msg.style.display = 'none';
+  },
+  closeChangePw() { document.getElementById('changePwModal').classList.remove('active'); },
+  async saveChangePw() {
+    const pw = document.getElementById('newPw').value;
+    const confirm = document.getElementById('confirmPw').value;
+    const msg = document.getElementById('changePwMsg');
+    if (!pw || pw.length < 6) { msg.textContent = 'Lösenordet måste vara minst 6 tecken.'; msg.style.color = '#c0392b'; msg.style.display = 'block'; return; }
+    if (pw !== confirm) { msg.textContent = 'Lösenorden matchar inte.'; msg.style.color = '#c0392b'; msg.style.display = 'block'; return; }
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { msg.textContent = 'Kunde inte byta: ' + error.message; msg.style.color = '#c0392b'; msg.style.display = 'block'; return; }
+    msg.textContent = 'Lösenord ändrat!'; msg.style.color = '#2ECC71'; msg.style.display = 'block';
+    setTimeout(() => CRM.closeChangePw(), 1500);
+  },
+
   /* Route planner */
   openRoutePanel() { document.getElementById('routePanel').style.display = 'block'; renderRouteStops(); },
   closeRoutePanel() { document.getElementById('routePanel').style.display = 'none'; },
@@ -853,6 +882,8 @@ function bindEvents() {
   document.getElementById('routeSearch')?.addEventListener('input', e => renderRouteSearch(e.target.value));
   document.getElementById('adminBtn').addEventListener('click', () => CRM.openAdmin());
   document.getElementById('rapportBtn').addEventListener('click', () => CRM.openRapport());
+  document.getElementById('changePwBtn').addEventListener('click', () => CRM.openChangePw());
+  document.getElementById('changePwSave').addEventListener('click', () => CRM.saveChangePw());
 
   /* Admin CSV file input */
   document.getElementById('adminCsvFile')?.addEventListener('change', e => {

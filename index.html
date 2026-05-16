@@ -160,6 +160,20 @@
 
       <button type="submit" class="login-btn" id="loginBtn">Logga in</button>
     </form>
+
+    <!-- Forgot password -->
+    <div id="forgotSection" style="margin-top:16px;text-align:center;">
+      <a href="#" id="forgotLink" style="font-size:11px;color:#8a8d91;text-decoration:none;letter-spacing:.5px;">Glömt lösenord?</a>
+    </div>
+    <div id="resetSection" style="display:none;margin-top:16px;">
+      <label>E-post</label>
+      <input id="resetEmail" type="email" placeholder="namn@berkeleycompany.com" autocomplete="email">
+      <div class="login-error" id="resetMsg" style="color:#2ECC71;"></div>
+      <button class="login-btn" id="resetBtn">Skicka återställningslänk</button>
+      <div style="text-align:center;margin-top:12px;">
+        <a href="#" id="backToLogin" style="font-size:11px;color:#8a8d91;text-decoration:none;letter-spacing:.5px;">← Tillbaka till login</a>
+      </div>
+    </div>
   </div>
 
   <!-- Supabase CDN -->
@@ -171,6 +185,42 @@
     /* If already logged in, go straight to app */
     const { data: { session } } = await sb.auth.getSession();
     if (session) window.location.href = 'app.html';
+
+    /* Forgot password toggle */
+    document.getElementById('forgotLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('loginForm').style.display = 'none';
+      document.getElementById('forgotSection').style.display = 'none';
+      document.getElementById('resetSection').style.display = 'block';
+      document.getElementById('resetEmail').value = document.getElementById('email').value;
+    });
+
+    document.getElementById('backToLogin').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('loginForm').style.display = '';
+      document.getElementById('forgotSection').style.display = '';
+      document.getElementById('resetSection').style.display = 'none';
+    });
+
+    /* Password reset */
+    document.getElementById('resetBtn').addEventListener('click', async () => {
+      const email = document.getElementById('resetEmail').value.trim();
+      const msgEl = document.getElementById('resetMsg');
+      if (!email) { msgEl.textContent = 'Ange din e-postadress.'; msgEl.style.color = '#c0392b'; msgEl.classList.add('show'); return; }
+      document.getElementById('resetBtn').disabled = true;
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname.replace('index.html', '') + 'app.html'
+      });
+      if (error) {
+        msgEl.textContent = 'Kunde inte skicka. Kontrollera e-postadressen.';
+        msgEl.style.color = '#c0392b';
+      } else {
+        msgEl.textContent = 'Återställningslänk skickad! Kolla din inkorg.';
+        msgEl.style.color = '#2ECC71';
+      }
+      msgEl.classList.add('show');
+      document.getElementById('resetBtn').disabled = false;
+    });
 
     /* Login form */
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
