@@ -375,6 +375,8 @@ function bindStatusFilter() {
 }
 
 /* ── Rapport helpers ──────────────────────────────── */
+let _allRevCache = [];
+
 async function buildRapport() {
   const isManager = hasRole('manager');
 
@@ -382,81 +384,198 @@ async function buildRapport() {
   Object.values(chartInstances).forEach(c => c.destroy());
   chartInstances = {};
 
-  if (isManager && profiles.length) {
-    /* Manager: bar charts per salesperson */
-    document.getElementById('rapportTitle').textContent = 'Rapport — Alla säljare';
+  /* Load revenue data */
+  try { _allRevCache = await fetchAllRevenue(); } catch { _allRevCache = []; }
 
+  const isDark = document.body.classList.contains('dark');
+  const textColor = isDark ? '#f2f2f2' : '#303336';
+  const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+
+  document.getElementById('rapportTitle').textContent = isManager ? 'Rapport — Alla säljare' : 'Min rapport';
+
+  /* ── Visits chart ── */
+  if (isManager && profiles.length) {
     const now = new Date();
     const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
     const salespeople = profiles.filter(p => p.role === 'salesperson');
     const names = salespeople.map(p => p.display_name);
-
-    /* Visits this month per SP */
     const visitCounts = salespeople.map(p => allVisitsCache.filter(v => v.user_id === p.id && v.visited_at.startsWith(thisMonth)).length);
-
-    const isDark = document.body.classList.contains('dark');
-    const textColor = isDark ? '#f2f2f2' : '#303336';
-    const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
 
     chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
       type: 'bar',
       data: { labels: names, datasets: [{ label: 'Besök denna månad', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
     });
-
-    /* Revenue per SP (current year) */
-    let allRev = [];
-    try { allRev = await fetchAllRevenue(); } catch { /* */ }
-    const year = now.getFullYear();
-    const revAmounts = salespeople.map(p => {
-      const custIds = allCustomers.filter(c => c.assigned_to === p.id).map(c => c.id);
-      return allRev.filter(r => r.year === year && custIds.includes(r.customer_id)).reduce((s, r) => s + (r.amount || 0), 0);
-    });
-
-    chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
-      type: 'bar',
-      data: { labels: names, datasets: [{ label: `Omsättning ${year}`, data: revAmounts, backgroundColor: '#2ECC71', borderRadius: 2 }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, callback: v => formatSEK(v) }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
-    });
   } else {
-    /* Salesperson: own stats over time */
-    document.getElementById('rapportTitle').textContent = 'Min rapport';
-
-    const isDark = document.body.classList.contains('dark');
-    const textColor = isDark ? '#f2f2f2' : '#303336';
-    const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
-
-    /* Visits per month (last 6 months) */
-    const months = [];
-    const visitCounts = [];
-    const now = new Date();
+    const months = [], visitCounts = [], now = new Date();
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
       months.push(d.toLocaleDateString('sv-SE', { month: 'short' }));
       visitCounts.push(allVisitsCache.filter(v => v.visited_at.startsWith(key)).length);
     }
-
     chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
       type: 'bar',
       data: { labels: months, datasets: [{ label: 'Besök', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
     });
+  }
 
-    /* Revenue per year */
-    let allRev = [];
-    try { allRev = await fetchAllRevenue(); } catch { /* */ }
-    const custIds = new Set(allCustomers.map(c => c.id));
-    const myRev = allRev.filter(r => custIds.has(r.customer_id));
-    const years = [...new Set(myRev.map(r => r.year))].sort();
-    const revAmounts = years.map(y => myRev.filter(r => r.year === y).reduce((s, r) => s + (r.amount || 0), 0));
+  /* ── Revenue filter setup ── */
+  const years = [...new Set(_allRevCache.map(r => r.year))].sort((a, b) => b - a);
+  const yearSel = document.getElementById('revYearFilter');
+  if (yearSel) {
+    const curYear = new Date().getFullYear();
+    if (!years.length) years.push(curYear);
+    yearSel.innerHTML = years.map(y => `<option value="${y}"${y === curYear ? ' selected' : ''}>${y}</option>`).join('');
+  }
 
-    chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
-      type: 'bar',
-      data: { labels: years.map(String), datasets: [{ label: 'Omsättning', data: revAmounts, backgroundColor: '#2ECC71', borderRadius: 2 }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, callback: v => formatSEK(v) }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+  buildRevenueChart();
+}
+
+function buildRevenueChart() {
+  if (chartInstances.revenue) { chartInstances.revenue.destroy(); delete chartInstances.revenue; }
+
+  const isDark = document.body.classList.contains('dark');
+  const textColor = isDark ? '#f2f2f2' : '#303336';
+  const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+  const isManager = hasRole('manager');
+
+  const periodType = document.getElementById('revPeriodType')?.value || 'year';
+  const selYear = parseInt(document.getElementById('revYearFilter')?.value) || new Date().getFullYear();
+  const selQuarter = document.getElementById('revQuarterFilter')?.value || 'all';
+  const selMonth = document.getElementById('revMonthFilter')?.value || 'all';
+  const showCompare = document.getElementById('revCompare')?.checked || false;
+  const dateFrom = document.getElementById('revDateFrom')?.value || '';
+  const dateTo = document.getElementById('revDateTo')?.value || '';
+
+  /* Filter revenue data */
+  function filterRev(rev, year, qtr, mon, pType, from, to) {
+    let filtered = rev.filter(r => r.year === year);
+    if (pType === 'quarter' && qtr !== 'all') {
+      const q = parseInt(qtr);
+      const m1 = (q - 1) * 3 + 1, m2 = q * 3;
+      filtered = filtered.filter(r => r.month && r.month >= m1 && r.month <= m2);
+    } else if (pType === 'month' && mon !== 'all') {
+      filtered = filtered.filter(r => r.month === parseInt(mon));
+    } else if (pType === 'custom' && from && to) {
+      /* For custom, match year/month combos */
+      const fd = new Date(from), td = new Date(to);
+      filtered = rev.filter(r => {
+        const rDate = new Date(r.year, (r.month || 1) - 1, 1);
+        return rDate >= fd && rDate <= td;
+      });
+    }
+    return filtered;
+  }
+
+  const currentRev = filterRev(_allRevCache, selYear, selQuarter, selMonth, periodType, dateFrom, dateTo);
+  let prevRev = [];
+  if (showCompare) {
+    prevRev = filterRev(_allRevCache, selYear - 1, selQuarter, selMonth, periodType, dateFrom, dateTo);
+  }
+
+  /* Build chart data */
+  let labels = [], currentData = [], prevData = [];
+
+  if (isManager && profiles.length) {
+    const salespeople = profiles.filter(p => p.role === 'salesperson');
+    labels = salespeople.map(p => p.display_name);
+
+    currentData = salespeople.map(p => {
+      const custIds = allCustomers.filter(c => c.assigned_to === p.id).map(c => c.id);
+      return currentRev.filter(r => custIds.includes(r.customer_id)).reduce((s, r) => s + (r.amount || 0), 0);
+    });
+
+    if (showCompare) {
+      prevData = salespeople.map(p => {
+        const custIds = allCustomers.filter(c => c.assigned_to === p.id).map(c => c.id);
+        return prevRev.filter(r => custIds.includes(r.customer_id)).reduce((s, r) => s + (r.amount || 0), 0);
+      });
+    }
+  } else {
+    /* Salesperson: show by month or year */
+    if (periodType === 'year') {
+      const custIds = new Set(allCustomers.map(c => c.id));
+      const myRev = _allRevCache.filter(r => custIds.has(r.customer_id));
+      const yrs = [...new Set(myRev.map(r => r.year))].sort();
+      labels = yrs.map(String);
+      currentData = yrs.map(y => myRev.filter(r => r.year === y).reduce((s, r) => s + (r.amount || 0), 0));
+    } else {
+      const monthNames = ['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
+      const custIds = new Set(allCustomers.map(c => c.id));
+      for (let m = 1; m <= 12; m++) {
+        labels.push(monthNames[m - 1]);
+        currentData.push(currentRev.filter(r => custIds.has(r.customer_id) && r.month === m).reduce((s, r) => s + (r.amount || 0), 0));
+        if (showCompare) {
+          prevData.push(prevRev.filter(r => custIds.has(r.customer_id) && r.month === m).reduce((s, r) => s + (r.amount || 0), 0));
+        }
+      }
+    }
+  }
+
+  /* Period label */
+  const monthNames = ['','Januari','Februari','Mars','April','Maj','Juni','Juli','Augusti','September','Oktober','November','December'];
+  let periodLabel = String(selYear);
+  if (periodType === 'quarter' && selQuarter !== 'all') periodLabel = `Q${selQuarter} ${selYear}`;
+  if (periodType === 'month' && selMonth !== 'all') periodLabel = `${monthNames[parseInt(selMonth)]} ${selYear}`;
+  if (periodType === 'custom') periodLabel = `${dateFrom || '?'} — ${dateTo || '?'}`;
+
+  /* Summary cards */
+  const totalCurrent = currentData.reduce((s, v) => s + v, 0);
+  const totalPrev = showCompare ? prevData.reduce((s, v) => s + v, 0) : 0;
+  const summaryEl = document.getElementById('revSummary');
+
+  let diffHtml = '';
+  if (showCompare && totalPrev > 0) {
+    const pct = ((totalCurrent - totalPrev) / totalPrev * 100).toFixed(1);
+    const arrow = pct >= 0 ? '↑' : '↓';
+    const col = pct >= 0 ? '#2ECC71' : '#E74C3C';
+    diffHtml = `<div class="rapport-summary-card"><div class="num" style="color:${col};">${arrow} ${Math.abs(pct)}%</div><div class="label">Förändring</div></div>`;
+  }
+
+  summaryEl.innerHTML = `
+    <div class="rapport-summary-card"><div class="num">${formatSEK(totalCurrent)}</div><div class="label">Försäljning ${periodLabel}</div></div>
+    ${showCompare ? `<div class="rapport-summary-card"><div class="num" style="color:var(--bm);">${formatSEK(totalPrev)}</div><div class="label">Försäljning ${selYear - 1}</div></div>` : ''}
+    ${diffHtml}
+  `;
+
+  /* Build datasets */
+  const datasets = [{
+    label: `Försäljning ${periodLabel}`,
+    data: currentData,
+    backgroundColor: '#303336',
+    borderRadius: 2
+  }];
+
+  if (showCompare && prevData.length) {
+    datasets.push({
+      label: `Försäljning ${selYear - 1}`,
+      data: prevData,
+      backgroundColor: '#E8634A',
+      borderRadius: 2
     });
   }
+
+  chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: showCompare, labels: { color: textColor, font: { family: 'Raleway', size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatSEK(ctx.raw) } }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { color: textColor, callback: v => formatSEK(v) },
+          grid: { color: gridColor }
+        },
+        x: { ticks: { color: textColor }, grid: { display: false } }
+      }
+    }
+  });
 }
 
 /* ── CSV import helpers ──────────────────────────── */
@@ -595,9 +714,9 @@ async function renderCard(customerId) {
     <div class="card-section">
       <div class="card-section-header"><h3>Omsättning</h3>${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddRevenue()">+ Lägg till</button>` : ''}</div>
       <div id="addRevenueForm" style="display:none;margin-bottom:10px;">
-        <div style="display:flex;gap:8px;"><input id="revYear" class="card-input" type="number" placeholder="År" value="${new Date().getFullYear()}" style="width:80px;"><input id="revAmount" class="card-input" type="number" placeholder="Belopp (SEK)" style="flex:1;"><button class="card-action-btn" onclick="CRM.cardAddRevenue('${c.id}')">Spara</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="revYear" class="card-input" type="number" placeholder="År" value="${new Date().getFullYear()}" style="width:70px;"><select id="revMonth" class="card-input" style="width:100px;"><option value="">Helår</option><option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">Maj</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option><option value="10">Okt</option><option value="11">Nov</option><option value="12">Dec</option></select><input id="revAmount" class="card-input" type="number" placeholder="Belopp (SEK)" style="flex:1;min-width:100px;"><button class="card-action-btn" onclick="CRM.cardAddRevenue('${c.id}')">Spara</button></div>
       </div>
-      ${revenue.length ? `<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;"><td style="padding:4px 0;">År</td><td style="text-align:right;padding:4px 0;">Belopp</td>${canEdit ? '<td></td>' : ''}</tr>${revenue.map(r => `<tr style="border-bottom:1px solid var(--bb);"><td style="padding:6px 0;">${r.year}</td><td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>${canEdit ? `<td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>` : ''}</tr>`).join('')}</table>` : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
+      ${revenue.length ? (() => { const mNames = ['','Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec']; return `<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;"><td style="padding:4px 0;">Period</td><td style="text-align:right;padding:4px 0;">Belopp</td>${canEdit ? '<td></td>' : ''}</tr>${revenue.map(r => `<tr style="border-bottom:1px solid var(--bb);"><td style="padding:6px 0;">${r.month ? mNames[r.month] + ' ' : ''}${r.year}</td><td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>${canEdit ? `<td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>` : ''}</tr>`).join('')}</table>`; })() : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
     </div>
 
     ${hasRole('admin') ? `<div class="card-section" style="border-bottom:none;"><button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button></div>` : ''}
@@ -693,7 +812,7 @@ window.CRM = {
   async cardAddComment(cid) { const t = document.getElementById('cardCommentText')?.value.trim(); if (!t) return; await addComment(cid, getProfile().id, t); await renderCard(cid); },
   async cardDeleteComment(cmid, cid) { await deleteComment(cmid); await renderCard(cid); },
   toggleAddRevenue() { const f = document.getElementById('addRevenueForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; },
-  async cardAddRevenue(cid) { const y = parseInt(document.getElementById('revYear').value); const a = parseFloat(document.getElementById('revAmount').value); if (!y || !a) return; await upsertRevenue(cid, y, a); await renderCard(cid); },
+  async cardAddRevenue(cid) { const y = parseInt(document.getElementById('revYear').value); const a = parseFloat(document.getElementById('revAmount').value); const m = document.getElementById('revMonth')?.value; if (!y || !a) return; await upsertRevenue(cid, y, a, m ? parseInt(m) : null); await renderCard(cid); },
   async cardDeleteRevenue(rid, cid) { await deleteRevenue(rid); await renderCard(cid); },
   async cardDeleteCustomer(cid) { if (!confirm('Vill du verkligen ta bort denna kund? Allt data raderas permanent.')) return; await deleteCustomer(cid); CRM.closeCard(); await refreshAll(); },
 
@@ -822,6 +941,16 @@ window.CRM = {
     document.querySelectorAll('#rapportTabs .admin-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('rapportVisitsTab').style.display = tab === 'visits' ? 'block' : 'none';
     document.getElementById('rapportRevenueTab').style.display = tab === 'revenue' ? 'block' : 'none';
+  },
+  revFilterChanged() {
+    const pType = document.getElementById('revPeriodType').value;
+    document.getElementById('revYearGroup').style.display = pType !== 'custom' ? '' : 'none';
+    document.getElementById('revQuarterGroup').style.display = pType === 'quarter' ? '' : 'none';
+    document.getElementById('revMonthGroup').style.display = pType === 'month' ? '' : 'none';
+    document.getElementById('revCustomGroup').style.display = pType === 'custom' ? '' : 'none';
+    document.getElementById('revCustomGroupTo').style.display = pType === 'custom' ? '' : 'none';
+    document.getElementById('revCompareGroup').style.display = pType !== 'custom' ? '' : 'none';
+    buildRevenueChart();
   },
 
   /* Change password */

@@ -308,18 +308,71 @@
 
   <!-- ═══ RAPPORT MODAL ═══ -->
   <div id="rapportModal" class="modal-overlay">
-    <div class="modal" style="width:680px;max-width:95%;">
+    <div class="modal" style="width:780px;max-width:95%;">
       <h3 id="rapportTitle">Rapport</h3>
       <div class="admin-tabs" id="rapportTabs">
         <button class="admin-tab active" data-tab="visits" onclick="CRM.rapportTab('visits')">Besök</button>
-        <button class="admin-tab" data-tab="revenue" onclick="CRM.rapportTab('revenue')">Omsättning</button>
+        <button class="admin-tab" data-tab="revenue" onclick="CRM.rapportTab('revenue')">Försäljning</button>
       </div>
+
+      <!-- Besök-tab -->
       <div id="rapportVisitsTab" class="admin-tab-content">
         <canvas id="chartVisits" height="280"></canvas>
       </div>
+
+      <!-- Försäljning-tab -->
       <div id="rapportRevenueTab" class="admin-tab-content" style="display:none;">
-        <canvas id="chartRevenue" height="280"></canvas>
+        <div class="rapport-filters">
+          <div class="rapport-filter-group">
+            <label>Period</label>
+            <select id="revPeriodType" class="rapport-select" onchange="CRM.revFilterChanged()">
+              <option value="year">Helår</option>
+              <option value="quarter">Kvartal</option>
+              <option value="month">Månad</option>
+              <option value="custom">Valfri period</option>
+            </select>
+          </div>
+          <div class="rapport-filter-group" id="revYearGroup">
+            <label>År</label>
+            <select id="revYearFilter" class="rapport-select" onchange="CRM.revFilterChanged()"></select>
+          </div>
+          <div class="rapport-filter-group" id="revQuarterGroup" style="display:none;">
+            <label>Kvartal</label>
+            <select id="revQuarterFilter" class="rapport-select" onchange="CRM.revFilterChanged()">
+              <option value="all">Alla</option>
+              <option value="1">Q1 (jan–mar)</option>
+              <option value="2">Q2 (apr–jun)</option>
+              <option value="3">Q3 (jul–sep)</option>
+              <option value="4">Q4 (okt–dec)</option>
+            </select>
+          </div>
+          <div class="rapport-filter-group" id="revMonthGroup" style="display:none;">
+            <label>Månad</label>
+            <select id="revMonthFilter" class="rapport-select" onchange="CRM.revFilterChanged()">
+              <option value="all">Alla</option>
+              <option value="1">Januari</option><option value="2">Februari</option><option value="3">Mars</option>
+              <option value="4">April</option><option value="5">Maj</option><option value="6">Juni</option>
+              <option value="7">Juli</option><option value="8">Augusti</option><option value="9">September</option>
+              <option value="10">Oktober</option><option value="11">November</option><option value="12">December</option>
+            </select>
+          </div>
+          <div class="rapport-filter-group" id="revCustomGroup" style="display:none;">
+            <label>Från</label>
+            <input type="date" id="revDateFrom" class="rapport-select" onchange="CRM.revFilterChanged()">
+          </div>
+          <div class="rapport-filter-group" id="revCustomGroupTo" style="display:none;">
+            <label>Till</label>
+            <input type="date" id="revDateTo" class="rapport-select" onchange="CRM.revFilterChanged()">
+          </div>
+          <div class="rapport-filter-group" id="revCompareGroup">
+            <label>&nbsp;</label>
+            <label class="rapport-checkbox"><input type="checkbox" id="revCompare" onchange="CRM.revFilterChanged()"> Jämför föregående</label>
+          </div>
+        </div>
+        <div id="revSummary" class="rapport-summary"></div>
+        <canvas id="chartRevenue" height="320"></canvas>
       </div>
+
       <div class="modal-buttons" style="margin-top:16px;">
         <button class="btn-cancel" onclick="CRM.closeRapport()">Stäng</button>
       </div>

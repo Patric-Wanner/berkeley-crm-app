@@ -1477,6 +1477,90 @@ body.dark .planned-date-input {
   max-height: 300px;
 }
 
+/* ── Rapport filters ───────────────────────────────── */
+.rapport-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: flex-end;
+}
+
+.rapport-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.rapport-filter-group label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--bm);
+  font-weight: 400;
+}
+
+.rapport-select {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'Raleway', sans-serif;
+  border: 1px solid var(--bb);
+  background: var(--bg);
+  color: var(--bd);
+  border-radius: 0;
+  outline: none;
+}
+
+.rapport-select:focus {
+  border-color: var(--bd);
+}
+
+.rapport-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  color: var(--bd) !important;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 6px 0;
+}
+
+.rapport-checkbox input[type="checkbox"] {
+  accent-color: var(--bd);
+}
+
+.rapport-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.rapport-summary-card {
+  background: var(--bg);
+  border: 1px solid var(--bb);
+  padding: 12px 18px;
+  flex: 1;
+  min-width: 120px;
+}
+
+.rapport-summary-card .num {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -.5px;
+}
+
+.rapport-summary-card .label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: var(--bm);
+  margin-top: 2px;
+}
+
 /* ── Dark mode ──────────────────────────────────────── */
 
 body.dark {

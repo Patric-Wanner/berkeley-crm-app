@@ -9,7 +9,8 @@ export async function fetchRevenue(customerId) {
     .from('revenue')
     .select('*')
     .eq('customer_id', customerId)
-    .order('year', { ascending: false });
+    .order('year', { ascending: false })
+    .order('month', { ascending: true, nullsFirst: true });
   if (error) throw error;
   return data;
 }
@@ -23,10 +24,12 @@ export async function fetchAllRevenue() {
   return data;
 }
 
-export async function upsertRevenue(customerId, year, amount) {
+export async function upsertRevenue(customerId, year, amount, month = null) {
+  const row = { customer_id: customerId, year, amount };
+  if (month) row.month = month;
   const { data, error } = await sb
     .from('revenue')
-    .upsert({ customer_id: customerId, year, amount }, { onConflict: 'customer_id,year' })
+    .upsert(row, { onConflict: 'customer_id,year,month' })
     .select()
     .single();
   if (error) throw error;
