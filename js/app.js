@@ -45,7 +45,23 @@ async function init() {
   if (wasDark) document.getElementById('themeBtn').textContent = '☀️';
 
   await refreshAll();
-  onAuthChange((event) => {
+  onAuthChange();
+  bindEvents();
+
+  /* Check if this is a password recovery redirect */
+  const hash = window.location.hash;
+  if (hash.includes('type=recovery') || hash.includes('type=magiclink')) {
+    setTimeout(() => {
+      CRM.openChangePw();
+      const msg = document.getElementById('changePwMsg');
+      msg.textContent = 'Ange ditt nya lösenord.';
+      msg.style.color = 'var(--bd)';
+      msg.style.display = 'block';
+    }, 500);
+  }
+
+  /* Also listen for Supabase PASSWORD_RECOVERY event */
+  sb.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') {
       CRM.openChangePw();
       const msg = document.getElementById('changePwMsg');
@@ -54,7 +70,6 @@ async function init() {
       msg.style.display = 'block';
     }
   });
-  bindEvents();
 }
 
 /* ── Role-based UI visibility ───────────────────────── */
