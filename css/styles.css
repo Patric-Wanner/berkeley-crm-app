@@ -196,6 +196,10 @@ body {
   margin-bottom: 4px;
 }
 
+.sidebar-close-btn {
+  display: none;
+}
+
 .sidebar-section {
   padding: 14px 18px;
   border-bottom: 1px solid var(--bb);
@@ -1131,6 +1135,7 @@ body.dark .sp-filter-select {
     flex-wrap: wrap;
     padding: 8px 10px;
     gap: 6px;
+    z-index: 10001;
   }
 
   .header-logo {
@@ -1232,6 +1237,22 @@ body.dark .sp-filter-select {
     background: var(--bw);
     z-index: 1;
     padding-top: 20px;
+  }
+
+  /* Close button visible on mobile */
+  .sidebar-close-btn {
+    display: block;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--bm);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color .2s;
+  }
+
+  .sidebar-close-btn:hover {
+    color: var(--bd);
   }
 
   /* Drag handle indicator */

@@ -251,6 +251,13 @@ function bindEvents() {
     invalidateSize();
   });
 
+  /* Sidebar close button (mobile) */
+  document.getElementById('sidebarCloseBtn').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('dashBtn').classList.remove('active');
+    invalidateSize();
+  });
+
   /* Theme */
   document.getElementById('themeBtn').addEventListener('click', function () {
     const dark = toggleTheme();
