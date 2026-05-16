@@ -184,6 +184,28 @@ body {
   display: block;
 }
 
+/* Custom scrollbar for sidebar */
+.sidebar::-webkit-scrollbar,
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: var(--bm);
+  border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover,
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--bd);
+}
+
 .sidebar-header {
   padding: 16px 22px 12px;
   border-bottom: 1px solid var(--bb);
@@ -340,7 +362,24 @@ body {
 .stat-detail-list {
   max-height: 340px;
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  padding-right: 6px;
+}
+
+.stat-detail-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.stat-detail-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.stat-detail-list::-webkit-scrollbar-thumb {
+  background: var(--bm);
+  border-radius: 3px;
+}
+
+.stat-detail-list::-webkit-scrollbar-thumb:hover {
+  background: var(--bd);
 }
 
 .stat-detail-item {
