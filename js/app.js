@@ -404,7 +404,7 @@ async function buildRapport() {
     chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
       type: 'bar',
       data: { labels: names, datasets: [{ label: 'Besök denna månad', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+      options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
     });
   } else {
     const months = [], visitCounts = [], now = new Date();
@@ -417,7 +417,7 @@ async function buildRapport() {
     chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
       type: 'bar',
       data: { labels: months, datasets: [{ label: 'Besök', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
-      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+      options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
     });
   }
 
@@ -560,17 +560,27 @@ function buildRevenueChart() {
   chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
     type: 'bar',
     data: { labels, datasets },
+    plugins: [ChartDataLabels],
     options: {
       responsive: true,
       plugins: {
         legend: { display: showCompare, labels: { color: textColor, font: { family: 'Raleway', size: 11 } } },
-        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatSEK(ctx.raw) } }
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatSEK(ctx.raw) } },
+        datalabels: {
+          anchor: 'end',
+          align: 'end',
+          color: textColor,
+          font: { family: 'Raleway', size: 11, weight: 500 },
+          formatter: v => v ? formatSEK(v) : '',
+          display: ctx => ctx.dataset.data[ctx.dataIndex] > 0
+        }
       },
       scales: {
         y: {
           beginAtZero: true,
           ticks: { color: textColor, callback: v => formatSEK(v) },
-          grid: { color: gridColor }
+          grid: { color: gridColor },
+          grace: '15%'
         },
         x: { ticks: { color: textColor }, grid: { display: false } }
       }
