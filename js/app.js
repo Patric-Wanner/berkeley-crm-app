@@ -18,8 +18,10 @@ import { initMap, buildMarkers, setFilter, flyTo, search, resetView, invalidateS
 
 /* ── State ──────────────────────────────────────────── */
 let customers = [];
+let allCustomers = [];  // unfiltered by city
 let lastVisitMap = {};  // { customerId: Date }
 let profiles = [];
+let activeCity = 'all';
 
 /* ── Init ───────────────────────────────────────────── */
 async function init() {
@@ -68,7 +70,7 @@ function initRoleUI(role) {
 /* ── Data loading ───────────────────────────────────── */
 async function refreshAll(filterUserId) {
   /* Load customers (RLS auto-filters for salespeople) */
-  customers = await fetchCustomers(filterUserId);
+  allCustomers = await fetchCustomers(filterUserId);
 
   /* Load last visit per customer */
   const allVisits = await fetchAllVisits(filterUserId);
@@ -84,6 +86,14 @@ async function refreshAll(filterUserId) {
     profiles = await fetchAllProfiles();
     buildSalespersonFilter();
   }
+
+  /* Build city filter from all loaded customers */
+  buildCityFilter(allCustomers);
+
+  /* Apply city filter */
+  customers = activeCity === 'all'
+    ? allCustomers
+    : allCustomers.filter(c => c.city === activeCity);
 
   /* Build map */
   buildMarkers(customers, lastVisitMap, buildPopup);
@@ -187,6 +197,37 @@ function buildSalespersonFilter() {
     ).join('');
 
   sel.addEventListener('change', () => refreshAll(sel.value));
+}
+
+/* ── City filter (all roles) ───────────────────────── */
+let _cityFilterBound = false;
+function buildCityFilter(custs) {
+  const sel = document.getElementById('cityFilter');
+  if (!sel) return;
+
+  /* Get unique cities sorted alphabetically */
+  const cities = [...new Set(custs.map(c => c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sv'));
+
+  sel.innerHTML = '<option value="all">Alla orter</option>' +
+    cities.map(city => `<option value="${city}"${city === activeCity ? ' selected' : ''}>${city}</option>`).join('');
+
+  if (!_cityFilterBound) {
+    sel.addEventListener('change', () => {
+      activeCity = sel.value;
+      /* Re-apply city filter without re-fetching from DB */
+      customers = activeCity === 'all'
+        ? allCustomers
+        : allCustomers.filter(c => c.city === activeCity);
+      buildMarkers(customers, lastVisitMap, buildPopup);
+
+      /* Update dashboard stats for filtered set */
+      const filteredVisits = Object.keys(lastVisitMap)
+        .filter(cid => customers.some(c => c.id === cid))
+        .map(cid => ({ customer_id: cid, visited_at: lastVisitMap[cid] }));
+      updateDashboard(filteredVisits);
+    });
+    _cityFilterBound = true;
+  }
 }
 
 /* ── Comparison stats (manager/admin) ───────────────── */
@@ -502,6 +543,9 @@ function bindEvents() {
       invalidateSize();
     }
     setFilter('all');
+    activeCity = 'all';
+    const citySel = document.getElementById('cityFilter');
+    if (citySel) citySel.value = 'all';
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     document.querySelector('.filter-chip[data-filter="all"]')?.classList.add('active');
     refreshAll();
