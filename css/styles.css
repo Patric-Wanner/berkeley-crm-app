@@ -1093,6 +1093,232 @@ body.dark .leaflet-tooltip-top:before {
   border-color: var(--bm);
 }
 
+/* ── Admin panel ───────────────────────────────────── */
+
+.admin-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--bb);
+}
+
+.admin-tab {
+  padding: 8px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: 'Raleway', sans-serif;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  font-weight: 400;
+  color: var(--bm);
+  transition: all .2s;
+}
+
+.admin-tab.active {
+  color: var(--bd);
+  border-bottom-color: var(--bd);
+}
+
+.admin-tab:hover {
+  color: var(--bd);
+}
+
+.admin-user-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bb);
+  font-size: 12px;
+}
+
+.admin-user-row:last-child {
+  border-bottom: none;
+}
+
+.admin-user-name {
+  flex: 1;
+  font-weight: 400;
+}
+
+.admin-user-email {
+  color: var(--bm);
+  font-size: 11px;
+  flex: 1;
+}
+
+.admin-user-role select {
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--bb);
+  border-radius: 0;
+  font-family: 'Raleway', sans-serif;
+  font-weight: 300;
+  background: var(--bw);
+  color: var(--bd);
+}
+
+.reassign-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bb);
+  font-size: 12px;
+}
+
+.reassign-item label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--bd);
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.reassign-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* ── Route planner panel ──────────────────────────── */
+
+.route-panel {
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  width: 320px;
+  background: var(--bw);
+  z-index: 10000;
+  padding: 18px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .15);
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.route-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.route-panel-header h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.route-stop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bb);
+}
+
+.route-stop-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bd);
+  color: var(--bl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.route-stop-name {
+  flex: 1;
+  font-size: 12px;
+}
+
+.route-stop-remove {
+  background: none;
+  border: none;
+  color: #E74C3C;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+}
+
+.route-search-item {
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid var(--bb);
+  transition: background .15s;
+}
+
+.route-search-item:hover {
+  background: var(--bl);
+}
+
+/* ── Planned visit badge ──────────────────────────── */
+
+.planned-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bb);
+}
+
+.planned-item:last-child {
+  border-bottom: none;
+}
+
+.planned-date {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.planned-date.overdue {
+  background: rgba(231, 76, 60, .1);
+  color: #E74C3C;
+}
+
+.planned-date.upcoming {
+  background: rgba(46, 204, 113, .1);
+  color: #2ECC71;
+}
+
+.planned-date.today {
+  background: rgba(234, 196, 53, .15);
+  color: #E67E22;
+}
+
+/* ── Status badge ─────────────────────────────────── */
+
+.status-active {
+  background: rgba(46, 204, 113, .1);
+  color: #2ECC71;
+}
+
+.status-prospect {
+  background: rgba(234, 196, 53, .15);
+  color: #E67E22;
+}
+
+.status-inactive {
+  background: rgba(138, 141, 145, .15);
+  color: #8a8d91;
+}
+
 /* ── Dark mode ──────────────────────────────────────── */
 
 body.dark {
@@ -1257,6 +1483,26 @@ body.dark .filter-clear-btn:hover {
   border-color: #f2f2f2;
 }
 
+body.dark .route-panel {
+  background: #1c1d1f;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, .5);
+}
+
+body.dark .admin-tab.active {
+  color: #f2f2f2;
+  border-bottom-color: #f2f2f2;
+}
+
+body.dark .admin-user-role select {
+  background: #2a2b2d;
+  color: #f2f2f2;
+  border-color: #444;
+}
+
+body.dark .route-search-item:hover {
+  background: #2a2b2d;
+}
+
 /* ══════════════════════════════════════════════════════
    RESPONSIVE — Mobile & Tablet
    ══════════════════════════════════════════════════════ */
@@ -1308,6 +1554,7 @@ body.dark .filter-clear-btn:hover {
   /* Hide non-essential on mobile */
   #exportBtn,
   #adminBtn,
+  #routeBtn,
   .header-user {
     display: none !important;
   }
@@ -1561,6 +1808,19 @@ body.dark .filter-clear-btn:hover {
   .toplist-days {
     font-size: 11px;
     padding: 3px 10px;
+  }
+
+  /* ── Route panel: full width ─────────────────────── */
+
+  .route-panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 60vh;
+    overflow-y: auto;
+    border-radius: 12px 12px 0 0;
   }
 
   /* ── Leaflet controls: touch-friendly ───────────── */

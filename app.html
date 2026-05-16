@@ -37,7 +37,9 @@
       <h1>Berkeley CRM</h1>
     </div>
     <input type="text" id="search" placeholder="Sök kund...">
+    <button class="hbtn" id="addCustBtn">+ Ny kund</button>
     <button class="hbtn" id="dashBtn">Dashboard</button>
+    <button class="hbtn" id="routeBtn">Rutt</button>
     <button class="hbtn" id="exportBtn">Exportera</button>
     <button class="hbtn" data-role="admin" id="adminBtn" style="display:none;">Admin</button>
     <div class="header-spacer"></div>
@@ -111,6 +113,12 @@
           <div id="toplist"></div>
         </div>
 
+        <!-- Planned visits -->
+        <div class="sidebar-section">
+          <h3>Planerade besök</h3>
+          <div id="plannedVisits"></div>
+        </div>
+
         <!-- Manager: comparison stats -->
         <div class="sidebar-section" data-role="manager" style="display:none;">
           <h3>Jämförelse</h3>
@@ -137,6 +145,122 @@
     <div id="cardContent" class="card-body"></div>
   </div>
   <div id="cardOverlay" class="card-overlay" onclick="CRM.closeCard()"></div>
+
+  <!-- ═══ ADD CUSTOMER MODAL ═══ -->
+  <div id="addCustModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Ny kund</h3>
+      <label>Företagsnamn *</label>
+      <input id="acName" type="text" placeholder="Företagsnamn">
+      <label>Kundnummer</label>
+      <input id="acNr" type="text" placeholder="Kundnummer">
+      <label>Adress</label>
+      <input id="acAddress" type="text" placeholder="Gatuadress">
+      <label>Postnummer</label>
+      <input id="acZip" type="text" placeholder="123 45">
+      <label>Ort *</label>
+      <input id="acCity" type="text" placeholder="Ort">
+      <label>Status</label>
+      <select id="acStatus">
+        <option value="active">Aktiv</option>
+        <option value="prospect">Prospekt</option>
+        <option value="inactive">Inaktiv</option>
+      </select>
+      <label data-role="admin" style="display:none;">Tilldela säljare</label>
+      <select id="acAssign" data-role="admin" style="display:none;"></select>
+      <p id="acError" style="color:#c0392b;font-size:12px;display:none;"></p>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="CRM.closeAddCustomer()">Avbryt</button>
+        <button class="btn-save" onclick="CRM.saveNewCustomer()">Spara</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ EDIT CUSTOMER MODAL ═══ -->
+  <div id="editCustModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Redigera kund</h3>
+      <input id="ecId" type="hidden">
+      <label>Företagsnamn *</label>
+      <input id="ecName" type="text">
+      <label>Kundnummer</label>
+      <input id="ecNr" type="text">
+      <label>Adress</label>
+      <input id="ecAddress" type="text">
+      <label>Postnummer</label>
+      <input id="ecZip" type="text">
+      <label>Ort *</label>
+      <input id="ecCity" type="text">
+      <label>Status</label>
+      <select id="ecStatus">
+        <option value="active">Aktiv</option>
+        <option value="prospect">Prospekt</option>
+        <option value="inactive">Inaktiv</option>
+      </select>
+      <label data-role="admin" style="display:none;">Tilldela säljare</label>
+      <select id="ecAssign" data-role="admin" style="display:none;"></select>
+      <p id="ecError" style="color:#c0392b;font-size:12px;display:none;"></p>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="CRM.closeEditCustomer()">Avbryt</button>
+        <button class="btn-save" onclick="CRM.saveEditCustomer()">Spara</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ADMIN PANEL MODAL ═══ -->
+  <div id="adminModal" class="modal-overlay">
+    <div class="modal" style="width:560px;max-width:95%;">
+      <h3>Administration</h3>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="users" onclick="CRM.adminTab('users')">Användare</button>
+        <button class="admin-tab" data-tab="reassign" onclick="CRM.adminTab('reassign')">Flytta kunder</button>
+      </div>
+
+      <!-- Users tab -->
+      <div id="adminUsersTab" class="admin-tab-content">
+        <div id="adminUsersList"></div>
+      </div>
+
+      <!-- Reassign tab -->
+      <div id="adminReassignTab" class="admin-tab-content" style="display:none;">
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:140px;">
+            <label>Från säljare</label>
+            <select id="reassignFrom" class="sp-filter-select"></select>
+          </div>
+          <div style="flex:1;min-width:140px;">
+            <label>Till säljare</label>
+            <select id="reassignTo" class="sp-filter-select"></select>
+          </div>
+        </div>
+        <div id="reassignList" style="max-height:300px;overflow-y:auto;margin-bottom:12px;"></div>
+        <div class="modal-buttons">
+          <button class="btn-save" onclick="CRM.executeReassign()">Flytta valda</button>
+        </div>
+      </div>
+
+      <div class="modal-buttons" style="margin-top:16px;">
+        <button class="btn-cancel" onclick="CRM.closeAdmin()">Stäng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ROUTE PLANNER PANEL ═══ -->
+  <div id="routePanel" class="route-panel" style="display:none;">
+    <div class="route-panel-header">
+      <h3>Ruttplanerare</h3>
+      <button class="filter-clear-btn" onclick="CRM.closeRoutePanel()">&#x2715;</button>
+    </div>
+    <p style="font-size:11px;color:var(--bm);margin-bottom:10px;">Välj kunder att besöka. Klicka på markörer i kartan eller välj nedan.</p>
+    <input type="text" id="routeSearch" class="card-input" placeholder="Sök kund att lägga till..." style="margin-bottom:10px;">
+    <div id="routeSearchResults" style="max-height:120px;overflow-y:auto;margin-bottom:10px;"></div>
+    <h4 style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--bm);margin-bottom:6px;">Valda stopp (<span id="routeCount">0</span>)</h4>
+    <div id="routeStops" style="max-height:200px;overflow-y:auto;margin-bottom:12px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="card-action-btn" onclick="CRM.optimizeRoute()" style="flex:1;">Optimera &amp; öppna</button>
+      <button class="card-add-btn" onclick="CRM.clearRoute()">Rensa</button>
+    </div>
+  </div>
 
   <!-- ═══ APP SCRIPT ═══ -->
   <script type="module" src="js/app.js"></script>
