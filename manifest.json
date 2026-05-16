@@ -1,0 +1,22 @@
+{
+  "name": "Berkeley CRM",
+  "short_name": "Berkeley CRM",
+  "start_url": "/berkeley-crm-app/app.html",
+  "scope": "/berkeley-crm-app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#303336",
+  "theme_color": "#303336",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
