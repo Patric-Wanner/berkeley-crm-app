@@ -7,7 +7,7 @@ import { sb } from './supabase-client.js';
 import { requireAuth, logout, onAuthChange } from './auth.js';
 import { loadProfile, getProfile, getRole, hasRole, fetchAllProfiles } from './role.js';
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer } from './customers.js';
-import { fetchAllVisits, registerVisit, deleteVisit, getLastVisit } from './visits.js';
+import { fetchAllVisits, fetchVisits, registerVisit, deleteVisit, getLastVisit } from './visits.js';
 import { addComment, deleteComment, fetchComments } from './comments.js';
 import { upsertRevenue, deleteRevenue, fetchRevenue } from './revenue.js';
 import { fetchContacts, addContact, updateContact, deleteContact, setPrimaryContact } from './contacts.js';
@@ -207,6 +207,178 @@ function updateComparison(allVisits) {
   </table>`;
 }
 
+/* ── Customer card rendering ───────────────────────── */
+async function renderCard(customerId) {
+  const c = customers.find(x => x.id === customerId);
+  if (!c) return;
+
+  const profile = getProfile();
+  const isOwner = c.assigned_to === profile.id;
+  const canEdit = isOwner || hasRole('admin');
+
+  /* Load all card data in parallel */
+  const [visits, contacts, comments, revenue] = await Promise.all([
+    fetchVisits(customerId),
+    fetchContacts(customerId),
+    fetchComments(customerId),
+    fetchRevenue(customerId)
+  ]);
+
+  const days = daysSince(lastVisitMap[c.id]);
+  const col = days === null ? '#EAC435' : visitColor(days);
+  const statusTxt = days === null ? 'Ej besökt' : days + ' dagar sedan';
+
+  /* Salesperson name */
+  const spName = profiles.length
+    ? profiles.find(p => p.id === c.assigned_to)?.display_name || '—'
+    : '';
+
+  /* Revenue total */
+  const revTotal = revenue.reduce((s, r) => s + (r.amount || 0), 0);
+
+  const html = `
+    <!-- Top info -->
+    <div class="card-top">
+      <div style="flex:1;">
+        <h2 class="card-title">${c.name}</h2>
+        <p class="card-subtitle">Kundnr: ${c.customer_nr}</p>
+        <p class="card-subtitle">${c.address || ''}</p>
+        <p class="card-subtitle">${c.zip || ''} ${c.city}</p>
+        ${spName ? `<p class="card-subtitle">Säljare: ${spName}</p>` : ''}
+        <a href="${googleMapsUrl(c)}" target="_blank" class="card-link">&#x2197; Google Maps</a>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="card-stats">
+      <div class="card-stat">
+        <div class="card-stat-num" style="color:${col};">${days === null ? '—' : days + 'd'}</div>
+        <div class="card-stat-label">Sedan besök</div>
+      </div>
+      <div class="card-stat">
+        <div class="card-stat-num">${visits.length}</div>
+        <div class="card-stat-label">Besök totalt</div>
+      </div>
+      <div class="card-stat">
+        <div class="card-stat-num">${contacts.length}</div>
+        <div class="card-stat-label">Kontakter</div>
+      </div>
+      <div class="card-stat">
+        <div class="card-stat-num">${revTotal ? formatSEK(revTotal) : '—'}</div>
+        <div class="card-stat-label">Omsättning</div>
+      </div>
+    </div>
+
+    <!-- Register visit -->
+    ${canEdit ? `
+    <div class="card-section">
+      <div class="card-section-header"><h3>Registrera besök</h3></div>
+      <div style="display:flex;gap:8px;">
+        <input id="cardVisitComment" class="card-input" placeholder="Kommentar (valfritt)" style="flex:1;">
+        <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')">Registrera</button>
+      </div>
+    </div>
+    ` : ''}
+
+    <!-- Visit history -->
+    <div class="card-section">
+      <div class="card-section-header"><h3>Besökshistorik</h3></div>
+      ${visits.length ? visits.slice(0, 20).map(v => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bb);">
+          <div>
+            <span style="font-size:12px;font-weight:500;">${formatDate(v.visited_at)}</span>
+            ${v.comment ? `<span style="font-size:11px;color:var(--bm);margin-left:8px;">${v.comment}</span>` : ''}
+          </div>
+          ${canEdit ? `<button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
+        </div>
+      `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga besök registrerade</p>'}
+    </div>
+
+    <!-- Contacts -->
+    <div class="card-section">
+      <div class="card-section-header">
+        <h3>Kontakter</h3>
+        ${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddContact('${c.id}')">+ Lägg till</button>` : ''}
+      </div>
+      <div id="addContactForm" style="display:none;margin-bottom:10px;">
+        <input id="contactName" class="card-input" placeholder="Namn" style="margin-bottom:4px;">
+        <input id="contactRole" class="card-input" placeholder="Roll/Titel" style="margin-bottom:4px;">
+        <input id="contactPhone" class="card-input" placeholder="Telefon" style="margin-bottom:4px;">
+        <input id="contactEmail" class="card-input" placeholder="E-post" style="margin-bottom:4px;">
+        <button class="card-action-btn" onclick="CRM.cardAddContact('${c.id}')">Spara kontakt</button>
+      </div>
+      ${contacts.length ? contacts.map(ct => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--bb);">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div>
+              <span style="font-size:13px;font-weight:500;">${ct.name}</span>
+              ${ct.is_primary ? '<span style="font-size:9px;background:var(--bd);color:var(--bl);padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px;">Primär</span>' : ''}
+              ${ct.role ? `<p style="font-size:11px;color:var(--bm);margin-top:2px;">${ct.role}</p>` : ''}
+            </div>
+            ${canEdit ? `<button onclick="CRM.cardDeleteContact('${ct.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
+          </div>
+          <div style="margin-top:4px;font-size:12px;">
+            ${ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--bd);text-decoration:none;margin-right:12px;">${ct.phone}</a>` : ''}
+            ${ct.email ? `<a href="mailto:${ct.email}" style="color:var(--bd);text-decoration:none;">${ct.email}</a>` : ''}
+          </div>
+        </div>
+      `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kontakter</p>'}
+    </div>
+
+    <!-- Comments -->
+    <div class="card-section">
+      <div class="card-section-header"><h3>Kommentarer</h3></div>
+      ${canEdit ? `
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;">
+        <button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button>
+      </div>
+      ` : ''}
+      ${comments.length ? comments.map(cm => `
+        <div style="padding:6px 0;border-bottom:1px solid var(--bb);">
+          <div style="display:flex;justify-content:space-between;">
+            <span style="font-size:12px;">${cm.text}</span>
+            ${canEdit ? `<button onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
+          </div>
+          <p style="font-size:10px;color:var(--bm);margin-top:2px;">${formatDate(cm.created_at)}</p>
+        </div>
+      `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kommentarer</p>'}
+    </div>
+
+    <!-- Revenue -->
+    <div class="card-section" style="border-bottom:none;">
+      <div class="card-section-header">
+        <h3>Omsättning</h3>
+        ${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddRevenue('${c.id}')">+ Lägg till</button>` : ''}
+      </div>
+      <div id="addRevenueForm" style="display:none;margin-bottom:10px;">
+        <div style="display:flex;gap:8px;">
+          <input id="revYear" class="card-input" type="number" placeholder="År" value="${new Date().getFullYear()}" style="width:80px;">
+          <input id="revAmount" class="card-input" type="number" placeholder="Belopp (SEK)" style="flex:1;">
+          <button class="card-action-btn" onclick="CRM.cardAddRevenue('${c.id}')">Spara</button>
+        </div>
+      </div>
+      ${revenue.length ? `
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;">
+            <td style="padding:4px 0;">År</td><td style="text-align:right;padding:4px 0;">Belopp</td>
+            ${canEdit ? '<td></td>' : ''}
+          </tr>
+          ${revenue.map(r => `
+            <tr style="border-bottom:1px solid var(--bb);">
+              <td style="padding:6px 0;">${r.year}</td>
+              <td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>
+              ${canEdit ? `<td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>` : ''}
+            </tr>
+          `).join('')}
+        </table>
+      ` : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
+    </div>
+  `;
+
+  document.getElementById('cardContent').innerHTML = html;
+}
+
 /* ── Global CRM actions (for popup onclick) ─────────── */
 window.CRM = {
   async registerVisit(customerId) {
@@ -217,8 +389,98 @@ window.CRM = {
   },
 
   async openCard(customerId) {
-    /* TODO: Open customer card panel */
-    flyTo(customerId);
+    document.getElementById('customerCard').classList.add('open');
+    document.getElementById('cardOverlay').classList.add('open');
+    document.getElementById('cardContent').innerHTML = '<p style="padding:40px;text-align:center;color:var(--bm);">Laddar...</p>';
+
+    /* Close sidebar on mobile so card is visible */
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.getElementById('dashBtn').classList.remove('active');
+      invalidateSize();
+    }
+
+    /* Close any open popup */
+    getMapInstance()?.closePopup();
+
+    await renderCard(customerId);
+  },
+
+  closeCard() {
+    document.getElementById('customerCard').classList.remove('open');
+    document.getElementById('cardOverlay').classList.remove('open');
+  },
+
+  /* Card-level visit registration */
+  async cardRegisterVisit(customerId) {
+    const input = document.getElementById('cardVisitComment');
+    const comment = input ? input.value.trim() : '';
+    await registerVisit(customerId, getProfile().id, comment);
+    await refreshAll();
+    await renderCard(customerId);
+  },
+
+  async cardDeleteVisit(visitId, customerId) {
+    await deleteVisit(visitId);
+    await refreshAll();
+    await renderCard(customerId);
+  },
+
+  /* Contacts */
+  toggleAddContact() {
+    const form = document.getElementById('addContactForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  },
+
+  async cardAddContact(customerId) {
+    const name = document.getElementById('contactName').value.trim();
+    if (!name) return;
+    await addContact(customerId, {
+      name,
+      role: document.getElementById('contactRole').value.trim() || null,
+      phone: document.getElementById('contactPhone').value.trim() || null,
+      email: document.getElementById('contactEmail').value.trim() || null
+    });
+    await renderCard(customerId);
+  },
+
+  async cardDeleteContact(contactId, customerId) {
+    await deleteContact(contactId);
+    await renderCard(customerId);
+  },
+
+  /* Comments */
+  async cardAddComment(customerId) {
+    const input = document.getElementById('cardCommentText');
+    const text = input ? input.value.trim() : '';
+    if (!text) return;
+    await addComment(customerId, getProfile().id, text);
+    await renderCard(customerId);
+  },
+
+  async cardDeleteComment(commentId, customerId) {
+    await deleteComment(commentId);
+    await renderCard(customerId);
+  },
+
+  /* Revenue */
+  toggleAddRevenue() {
+    const form = document.getElementById('addRevenueForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  },
+
+  async cardAddRevenue(customerId) {
+    const year = parseInt(document.getElementById('revYear').value);
+    const amount = parseFloat(document.getElementById('revAmount').value);
+    if (!year || !amount) return;
+    await upsertRevenue(customerId, year, amount);
+    await renderCard(customerId);
+  },
+
+  async cardDeleteRevenue(revenueId, customerId) {
+    await deleteRevenue(revenueId);
+    await renderCard(customerId);
   }
 };
 
