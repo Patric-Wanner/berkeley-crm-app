@@ -219,7 +219,7 @@ function updateDashboard(allVisits) {
     <div class="stat-box" data-stat="customers"><div class="num">${customers.length}</div><div class="label">Kunder</div></div>
     <div class="stat-box" data-stat="visits"><div class="num">${visitsThisMonth}</div><div class="label">Besök denna månad</div></div>
     <div class="stat-box" data-stat="overdue"><div class="num" style="color:#E74C3C;">${needsVisitList.length}</div><div class="label">Behöver besök</div></div>
-    <div class="stat-box" data-stat="people"><div class="num">${profiles.length || '—'}</div><div class="label">${hasRole('manager') ? 'Säljare' : 'Kunder'}</div></div>
+    <div class="stat-box" data-stat="people"><div class="num">${hasRole('manager') ? profiles.filter(p => p.role === 'salesperson').length || '—' : customers.length}</div><div class="label">${hasRole('manager') ? 'Säljare' : 'Kunder'}</div></div>
   `;
 
   document.querySelectorAll('.stat-box[data-stat]').forEach(box => {
