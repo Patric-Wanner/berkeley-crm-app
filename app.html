@@ -25,6 +25,9 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
   <!-- App styles -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -82,6 +85,20 @@
           </div>
         </div>
 
+        <!-- Status filter -->
+        <div class="sidebar-section">
+          <h3>Status</h3>
+          <div class="filter-row">
+            <select id="statusFilter" class="sp-filter-select">
+              <option value="all">Alla statusar</option>
+              <option value="active">Aktiv</option>
+              <option value="prospect">Prospekt</option>
+              <option value="inactive">Inaktiv</option>
+            </select>
+            <button class="filter-clear-btn" id="statusFilterClear" title="Rensa" style="display:none;">&#x2715;</button>
+          </div>
+        </div>
+
         <div class="sidebar-section">
           <h3>Översikt</h3>
           <div class="stat-grid" id="statsGrid"></div>
@@ -117,6 +134,17 @@
         <div class="sidebar-section">
           <h3>Behöver besökas</h3>
           <div id="toplist"></div>
+        </div>
+
+        <!-- Rapport button -->
+        <div class="sidebar-section">
+          <button class="dash-route-btn" id="rapportBtn">Rapport</button>
+        </div>
+
+        <!-- Activity feed -->
+        <div class="sidebar-section">
+          <h3>Senaste aktivitet</h3>
+          <div id="activityFeed"></div>
         </div>
 
         <!-- Manager: comparison stats -->
@@ -214,6 +242,7 @@
       <div class="admin-tabs">
         <button class="admin-tab active" data-tab="users" onclick="CRM.adminTab('users')">Användare</button>
         <button class="admin-tab" data-tab="reassign" onclick="CRM.adminTab('reassign')">Flytta kunder</button>
+        <button class="admin-tab" data-tab="import" onclick="CRM.adminTab('import')">Importera</button>
       </div>
 
       <!-- Users tab -->
@@ -239,8 +268,57 @@
         </div>
       </div>
 
+      <!-- Import tab -->
+      <div id="adminImportTab" class="admin-tab-content" style="display:none;">
+        <p style="font-size:11px;color:var(--bm);margin-bottom:12px;">Ladda upp CSV med kolumner: <strong>Företagsnamn;Kundnummer;Adress;Postnr;Ort;Status</strong></p>
+        <input type="file" id="adminCsvFile" accept=".csv,.txt" style="margin-bottom:12px;">
+        <label>Tilldela till säljare</label>
+        <select id="importAssign" class="sp-filter-select" style="margin-bottom:12px;"></select>
+        <div id="adminImportPreview" style="max-height:200px;overflow-y:auto;margin-bottom:12px;font-size:11px;"></div>
+        <p id="adminImportMsg" style="font-size:12px;display:none;"></p>
+        <div class="modal-buttons">
+          <button class="btn-save" id="adminImportBtn" onclick="CRM.runAdminImport()" style="display:none;">Importera</button>
+        </div>
+      </div>
+
       <div class="modal-buttons" style="margin-top:16px;">
         <button class="btn-cancel" onclick="CRM.closeAdmin()">Stäng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ RAPPORT MODAL ═══ -->
+  <div id="rapportModal" class="modal-overlay">
+    <div class="modal" style="width:680px;max-width:95%;">
+      <h3 id="rapportTitle">Rapport</h3>
+      <div class="admin-tabs" id="rapportTabs">
+        <button class="admin-tab active" data-tab="visits" onclick="CRM.rapportTab('visits')">Besök</button>
+        <button class="admin-tab" data-tab="revenue" onclick="CRM.rapportTab('revenue')">Omsättning</button>
+      </div>
+      <div id="rapportVisitsTab" class="admin-tab-content">
+        <canvas id="chartVisits" height="280"></canvas>
+      </div>
+      <div id="rapportRevenueTab" class="admin-tab-content" style="display:none;">
+        <canvas id="chartRevenue" height="280"></canvas>
+      </div>
+      <div class="modal-buttons" style="margin-top:16px;">
+        <button class="btn-cancel" onclick="CRM.closeRapport()">Stäng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CSV IMPORT MODAL (admin) ═══ -->
+  <div id="importModal" class="modal-overlay">
+    <div class="modal" style="width:520px;max-width:95%;">
+      <h3>Importera kunder (CSV)</h3>
+      <p style="font-size:11px;color:var(--bm);margin-bottom:12px;">CSV-filen ska ha kolumner: <strong>Företagsnamn;Kundnummer;Adress;Postnr;Ort;Status</strong> (semikolon-separerad, UTF-8). Status kan vara: active, prospect, inactive.</p>
+      <input type="file" id="csvFileInput" accept=".csv,.txt" style="margin-bottom:12px;">
+      <div id="importPreview" style="max-height:200px;overflow-y:auto;margin-bottom:12px;font-size:11px;"></div>
+      <p id="importError" style="color:#c0392b;font-size:12px;display:none;"></p>
+      <p id="importSuccess" style="color:#2ECC71;font-size:12px;display:none;"></p>
+      <div class="modal-buttons">
+        <button class="btn-cancel" onclick="CRM.closeImport()">Stäng</button>
+        <button class="btn-save" id="importRunBtn" onclick="CRM.runImport()" style="display:none;">Importera</button>
       </div>
     </div>
   </div>

@@ -1,29 +1,33 @@
 /**
  * Berkeley CRM — App
- * Main entry point. Initializes auth, loads data, wires up UI.
+ * Main entry point. All features.
  */
 
 import { sb } from './supabase-client.js';
 import { requireAuth, logout, onAuthChange } from './auth.js';
 import { loadProfile, getProfile, getRole, hasRole, fetchAllProfiles } from './role.js';
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer, reassignCustomers } from './customers.js';
-import { fetchAllVisits, fetchVisits, registerVisit, deleteVisit, getLastVisit } from './visits.js';
+import { fetchAllVisits, fetchVisits, registerVisit, deleteVisit } from './visits.js';
 import { addComment, deleteComment, fetchComments } from './comments.js';
 import { upsertRevenue, deleteRevenue, fetchRevenue, fetchAllRevenue } from './revenue.js';
-import { fetchContacts, addContact, updateContact, deleteContact, setPrimaryContact } from './contacts.js';
+import { fetchContacts, addContact, updateContact, deleteContact } from './contacts.js';
 import { fetchNextVisits, setNextVisit, removeNextVisit } from './next-visits.js';
+import { fetchTodos, addTodo, toggleTodo, deleteTodo } from './todos.js';
 import { daysSince, formatDate, formatSEK, visitColor, googleMapsUrl, geocodeAddress, haversine } from './helpers.js';
-import { HQ, MAP_CENTER, MAP_ZOOM, OSRM_BASE } from './config.js';
+import { HQ, MAP_CENTER, MAP_ZOOM } from './config.js';
 import { initMap, buildMarkers, setFilter, flyTo, search, resetView, invalidateSize, getMapInstance, toggleTheme } from './map.js';
 
 /* ── State ──────────────────────────────────────────── */
 let customers = [];
 let allCustomers = [];
 let lastVisitMap = {};
+let allVisitsCache = [];
 let profiles = [];
 let activeCity = 'all';
+let activeStatus = 'all';
 let nextVisitsCache = [];
 let routeStops = [];
+let chartInstances = {};
 
 /* ── Init ───────────────────────────────────────────── */
 async function init() {
@@ -56,13 +60,27 @@ function initRoleUI(role) {
   }
 }
 
+/* ── Combined filter logic ─────────────────────────── */
+function applyFilters() {
+  customers = allCustomers;
+  if (activeCity !== 'all') customers = customers.filter(c => c.city === activeCity);
+  if (activeStatus !== 'all') customers = customers.filter(c => (c.status || 'active') === activeStatus);
+
+  buildMarkers(customers, lastVisitMap, buildPopup);
+
+  const filteredVisits = allVisitsCache.filter(v => customers.some(c => c.id === v.customer_id));
+  updateDashboard(filteredVisits);
+  updatePlannedVisits();
+  updateActivityFeed();
+}
+
 /* ── Data loading ───────────────────────────────────── */
 async function refreshAll(filterUserId) {
   allCustomers = await fetchCustomers(filterUserId);
 
-  const allVisits = await fetchAllVisits(filterUserId);
+  allVisitsCache = await fetchAllVisits(filterUserId);
   lastVisitMap = {};
-  allVisits.forEach(v => {
+  allVisitsCache.forEach(v => {
     if (!lastVisitMap[v.customer_id] || new Date(v.visited_at) > new Date(lastVisitMap[v.customer_id])) {
       lastVisitMap[v.customer_id] = v.visited_at;
     }
@@ -73,18 +91,10 @@ async function refreshAll(filterUserId) {
     buildSalespersonFilter();
   }
 
-  /* Load planned visits */
   try { nextVisitsCache = await fetchNextVisits(); } catch { nextVisitsCache = []; }
 
   buildCityFilter(allCustomers);
-
-  customers = activeCity === 'all'
-    ? allCustomers
-    : allCustomers.filter(c => c.city === activeCity);
-
-  buildMarkers(customers, lastVisitMap, buildPopup);
-  updateDashboard(allVisits);
-  updatePlannedVisits();
+  applyFilters();
 }
 
 /* ── Popup builder ──────────────────────────────────── */
@@ -100,12 +110,10 @@ function buildPopup(c, days, lastVisit) {
   }
 
   const spName = hasRole('manager') && profiles.length
-    ? profiles.find(p => p.id === c.assigned_to)?.display_name || ''
-    : '';
+    ? profiles.find(p => p.id === c.assigned_to)?.display_name || '' : '';
 
   const statusBadge = c.status !== 'active'
-    ? `<span class="card-status-badge status-${c.status}" style="font-size:9px;padding:2px 8px;margin-left:8px;">${c.status === 'prospect' ? 'Prospekt' : 'Inaktiv'}</span>`
-    : '';
+    ? `<span class="card-status-badge status-${c.status}" style="font-size:9px;padding:2px 8px;margin-left:8px;">${c.status === 'prospect' ? 'Prospekt' : 'Inaktiv'}</span>` : '';
 
   return `<div class="customer-popup">
     <h3>${c.name}${statusBadge}</h3>
@@ -114,18 +122,13 @@ function buildPopup(c, days, lastVisit) {
     <p>${c.address || '<em>Adress saknas</em>'}</p>
     <p>${c.zip || ''} ${c.city}</p>
     <a href="${googleMapsUrl(c)}" target="_blank" class="gmaps-link">&#x2197; Öppna i Google Maps</a>
-
     <hr class="popup-hr">
-
     <p style="font-size:12px;">Senaste besök: ${statusText}</p>
-
     ${canEdit ? `
     <div style="margin-top:6px;">
       <input id="vc_${c.id}" type="text" placeholder="Kommentar (valfritt)" class="popup-input" style="margin-bottom:4px;">
       <button onclick="CRM.registerVisit('${c.id}')" class="popup-btn">Registrera besök</button>
-    </div>
-    ` : ''}
-
+    </div>` : ''}
     <hr class="popup-hr">
     <div style="display:flex;gap:6px;">
       <button onclick="CRM.openCard('${c.id}')" class="popup-btn" style="flex:1;">Kundkort</button>
@@ -153,20 +156,12 @@ function openStatDetail(stat, allCusts, needsVisitList, visitsThisMonthList) {
       const meta = d === null ? 'Ej besökt' : d + 'd sedan';
       return { id: c.id, name: c.name, city: c.city, meta, col };
     }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
-
   } else if (stat === 'visits') {
     titleText = `Besök denna månad (${visitsThisMonthList.length})`;
     items = visitsThisMonthList.map(v => {
       const c = allCusts.find(x => x.id === v.customer_id);
-      return {
-        id: v.customer_id,
-        name: c ? c.name : 'Okänd',
-        city: c ? c.city : '',
-        meta: formatDate(v.visited_at),
-        col: '#2ECC71'
-      };
+      return { id: v.customer_id, name: c ? c.name : 'Okänd', city: c ? c.city : '', meta: formatDate(v.visited_at), col: '#2ECC71' };
     }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
-
   } else if (stat === 'overdue') {
     titleText = `Behöver besök (${needsVisitList.length})`;
     items = needsVisitList.map(c => {
@@ -174,12 +169,7 @@ function openStatDetail(stat, allCusts, needsVisitList, visitsThisMonthList) {
       const col = d === null ? '#EAC435' : visitColor(d);
       const meta = d === null ? 'Aldrig besökt' : d + ' dagar';
       return { id: c.id, name: c.name, city: c.city, meta, col };
-    }).sort((a, b) => {
-      const da = daysSince(lastVisitMap[a.id]) ?? 9999;
-      const db = daysSince(lastVisitMap[b.id]) ?? 9999;
-      return db - da;
-    });
-
+    }).sort((a, b) => (daysSince(lastVisitMap[b.id]) ?? 9999) - (daysSince(lastVisitMap[a.id]) ?? 9999));
   } else if (stat === 'people') {
     if (hasRole('manager') && profiles.length) {
       titleText = `Säljare (${profiles.filter(p => p.role === 'salesperson').length})`;
@@ -189,9 +179,7 @@ function openStatDetail(stat, allCusts, needsVisitList, visitsThisMonthList) {
       });
     } else {
       titleText = `Alla kunder (${allCusts.length})`;
-      items = allCusts.map(c => ({
-        id: c.id, name: c.name, city: c.city, meta: c.city, col: null
-      })).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+      items = allCusts.map(c => ({ id: c.id, name: c.name, city: c.city, meta: c.city, col: null })).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
     }
   }
 
@@ -201,10 +189,7 @@ function openStatDetail(stat, allCusts, needsVisitList, visitsThisMonthList) {
 
   function renderList(filter) {
     const q = (filter || '').toLowerCase();
-    const filtered = q
-      ? items.filter(i => i.name.toLowerCase().includes(q) || (i.city && i.city.toLowerCase().includes(q)))
-      : items;
-
+    const filtered = q ? items.filter(i => i.name.toLowerCase().includes(q) || (i.city && i.city.toLowerCase().includes(q))) : items;
     listEl.innerHTML = filtered.map(i => `
       <div class="stat-detail-item">
         <span class="stat-detail-name" ${i.id ? `onclick="CRM.openCard('${i.id}')"` : ''}>${i.name}${i.city ? ` <span style="color:var(--bm);font-weight:300;">${i.city}</span>` : ''}</span>
@@ -215,10 +200,7 @@ function openStatDetail(stat, allCusts, needsVisitList, visitsThisMonthList) {
 
   renderList();
   searchEl.oninput = () => renderList(searchEl.value);
-  closeBtn.onclick = () => {
-    panel.style.display = 'none';
-    document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('active'));
-  };
+  closeBtn.onclick = () => { panel.style.display = 'none'; document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('active')); };
 }
 
 /* ── Dashboard ──────────────────────────────────────── */
@@ -231,7 +213,6 @@ function updateDashboard(allVisits) {
     const d = daysSince(lastVisitMap[c.id]);
     return d === null || d >= 90;
   });
-
   const visitsThisMonthList = allVisits.filter(v => v.visited_at.startsWith(thisMonth));
 
   document.getElementById('statsGrid').innerHTML = `
@@ -243,22 +224,17 @@ function updateDashboard(allVisits) {
 
   document.querySelectorAll('.stat-box[data-stat]').forEach(box => {
     box.addEventListener('click', () => {
-      const stat = box.dataset.stat;
-      openStatDetail(stat, customers, needsVisitList, visitsThisMonthList);
+      openStatDetail(box.dataset.stat, customers, needsVisitList, visitsThisMonthList);
       document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('active'));
       box.classList.add('active');
     });
   });
 
   /* Toplist */
-  const sorted = customers
-    .filter(c => c.lat)
-    .map(c => {
-      const d = daysSince(lastVisitMap[c.id]);
-      return { ...c, days: d === null ? 9999 : d };
-    })
-    .sort((a, b) => b.days - a.days)
-    .slice(0, 10);
+  const sorted = customers.filter(c => c.lat).map(c => {
+    const d = daysSince(lastVisitMap[c.id]);
+    return { ...c, days: d === null ? 9999 : d };
+  }).sort((a, b) => b.days - a.days).slice(0, 10);
 
   document.getElementById('toplist').innerHTML = sorted.map(c => {
     const col = c.days === 9999 ? '#EAC435' : c.days >= 90 ? '#E74C3C' : c.days >= 60 ? '#E67E22' : '#EAC435';
@@ -269,9 +245,7 @@ function updateDashboard(allVisits) {
     </div>`;
   }).join('');
 
-  document.getElementById('dashDate').textContent = now.toLocaleDateString('sv-SE', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
+  document.getElementById('dashDate').textContent = now.toLocaleDateString('sv-SE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 /* ── Planned visits ────────────────────────────────── */
@@ -279,29 +253,54 @@ function updatePlannedVisits() {
   const el = document.getElementById('plannedVisits');
   if (!el) return;
   const today = new Date().toISOString().slice(0, 10);
-
   const customerIds = new Set(customers.map(c => c.id));
-  const relevant = nextVisitsCache
-    .filter(nv => customerIds.has(nv.customer_id))
-    .sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
+  const relevant = nextVisitsCache.filter(nv => customerIds.has(nv.customer_id)).sort((a, b) => a.scheduled_date.localeCompare(b.scheduled_date));
 
-  if (!relevant.length) {
-    el.innerHTML = '<p style="font-size:11px;color:var(--bm);">Inga planerade besök</p>';
-    return;
-  }
+  if (!relevant.length) { el.innerHTML = '<p style="font-size:11px;color:var(--bm);">Inga planerade besök</p>'; return; }
 
   el.innerHTML = relevant.slice(0, 20).map(nv => {
     const c = customers.find(x => x.id === nv.customer_id);
     const name = c ? c.name : (nv.customers?.name || 'Okänd');
     const d = nv.scheduled_date;
-    let cls = 'upcoming';
-    if (d < today) cls = 'overdue';
-    else if (d === today) cls = 'today';
-    const label = d === today ? 'Idag' : formatDate(d);
     return `<div class="planned-item">
       <span class="toplist-name" onclick="CRM.openCard('${nv.customer_id}')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
       <input type="date" class="planned-date-input" value="${d}" onchange="CRM.dashChangeNextVisit('${nv.customer_id}', this.value)" title="Ändra datum">
-      <button class="route-stop-remove" onclick="CRM.dashRemoveNextVisit('${nv.customer_id}')" title="Ta bort planerat besök">&#x2715;</button>
+      <button class="route-stop-remove" onclick="CRM.dashRemoveNextVisit('${nv.customer_id}')" title="Ta bort">&#x2715;</button>
+    </div>`;
+  }).join('');
+}
+
+/* ── Activity feed ─────────────────────────────────── */
+function updateActivityFeed() {
+  const el = document.getElementById('activityFeed');
+  if (!el) return;
+
+  const customerIds = new Set(customers.map(c => c.id));
+
+  /* Build activity from visits */
+  const events = allVisitsCache
+    .filter(v => customerIds.has(v.customer_id))
+    .map(v => {
+      const c = customers.find(x => x.id === v.customer_id);
+      return { type: 'visit', customerId: v.customer_id, name: c?.name || 'Okänd', date: v.visited_at, detail: v.comment || '' };
+    })
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 15);
+
+  if (!events.length) { el.innerHTML = '<p style="font-size:11px;color:var(--bm);">Ingen aktivitet</p>'; return; }
+
+  el.innerHTML = events.map(e => {
+    const icon = '📍';
+    const ago = daysSince(e.date);
+    const timeStr = ago === 0 ? 'Idag' : ago === 1 ? 'Igår' : ago + 'd sedan';
+    return `<div class="activity-item">
+      <span class="activity-icon">${icon}</span>
+      <div class="activity-text">
+        <strong onclick="CRM.openCard('${e.customerId}')">${e.name}</strong>
+        <span style="color:var(--bm);"> — besök</span>
+        ${e.detail ? `<p style="font-size:10px;color:var(--bm);margin-top:1px;">${e.detail}</p>` : ''}
+      </div>
+      <span class="activity-time">${timeStr}</span>
     </div>`;
   }).join('');
 }
@@ -311,96 +310,146 @@ function buildSalespersonFilter() {
   const sel = document.getElementById('spFilter');
   if (!sel) return;
   sel.innerHTML = '<option value="all">Alla säljare</option>' +
-    profiles.filter(p => p.role === 'salesperson').map(p =>
-      `<option value="${p.id}">${p.display_name}</option>`
-    ).join('');
+    profiles.filter(p => p.role === 'salesperson').map(p => `<option value="${p.id}">${p.display_name}</option>`).join('');
 
   sel.addEventListener('change', () => {
-    const clearBtn = document.getElementById('spFilterClear');
-    if (clearBtn) clearBtn.style.display = sel.value === 'all' ? 'none' : 'flex';
+    document.getElementById('spFilterClear').style.display = sel.value === 'all' ? 'none' : 'flex';
     refreshAll(sel.value);
   });
-
-  const clearBtn = document.getElementById('spFilterClear');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
-      sel.value = 'all';
-      clearBtn.style.display = 'none';
-      refreshAll('all');
-    });
-  }
+  document.getElementById('spFilterClear')?.addEventListener('click', () => {
+    sel.value = 'all';
+    document.getElementById('spFilterClear').style.display = 'none';
+    refreshAll('all');
+  });
 }
 
-/* ── City filter (all roles) ───────────────────────── */
+/* ── City filter ───────────────────────────────────── */
 let _cityFilterBound = false;
-function applyCityFilter() {
-  const sel = document.getElementById('cityFilter');
-  const clearBtn = document.getElementById('cityFilterClear');
-  if (!sel) return;
-
-  customers = activeCity === 'all'
-    ? allCustomers
-    : allCustomers.filter(c => c.city === activeCity);
-  buildMarkers(customers, lastVisitMap, buildPopup);
-
-  if (clearBtn) clearBtn.style.display = activeCity === 'all' ? 'none' : 'flex';
-
-  const filteredVisits = Object.keys(lastVisitMap)
-    .filter(cid => customers.some(c => c.id === cid))
-    .map(cid => ({ customer_id: cid, visited_at: lastVisitMap[cid] }));
-  updateDashboard(filteredVisits);
-  updatePlannedVisits();
-}
-
 function buildCityFilter(custs) {
   const sel = document.getElementById('cityFilter');
   if (!sel) return;
-
   const cities = [...new Set(custs.map(c => c.city).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'sv'));
-  sel.innerHTML = '<option value="all">Alla orter</option>' +
-    cities.map(city => `<option value="${city}"${city === activeCity ? ' selected' : ''}>${city}</option>`).join('');
+  sel.innerHTML = '<option value="all">Alla orter</option>' + cities.map(city => `<option value="${city}"${city === activeCity ? ' selected' : ''}>${city}</option>`).join('');
 
   if (!_cityFilterBound) {
-    sel.addEventListener('change', () => {
-      activeCity = sel.value;
-      applyCityFilter();
-    });
-
-    const clearBtn = document.getElementById('cityFilterClear');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        activeCity = 'all';
-        sel.value = 'all';
-        applyCityFilter();
-      });
-    }
+    sel.addEventListener('change', () => { activeCity = sel.value; document.getElementById('cityFilterClear').style.display = activeCity === 'all' ? 'none' : 'flex'; applyFilters(); });
+    document.getElementById('cityFilterClear')?.addEventListener('click', () => { activeCity = 'all'; sel.value = 'all'; document.getElementById('cityFilterClear').style.display = 'none'; applyFilters(); });
     _cityFilterBound = true;
   }
 }
 
-/* ── Comparison stats (manager/admin) ───────────────── */
-function updateComparison(allVisits) {
-  if (!hasRole('manager')) return;
-  const now = new Date();
-  const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+/* ── Status filter ─────────────────────────────────── */
+let _statusFilterBound = false;
+function bindStatusFilter() {
+  if (_statusFilterBound) return;
+  const sel = document.getElementById('statusFilter');
+  const clearBtn = document.getElementById('statusFilterClear');
+  if (!sel) return;
 
-  const stats = profiles.filter(p => p.role === 'salesperson').map(p => {
-    const custCount = customers.filter(c => c.assigned_to === p.id).length;
-    const monthVisits = allVisits.filter(v => v.user_id === p.id && v.visited_at.startsWith(thisMonth)).length;
-    return { name: p.display_name, custCount, monthVisits };
-  });
+  sel.addEventListener('change', () => { activeStatus = sel.value; if (clearBtn) clearBtn.style.display = activeStatus === 'all' ? 'none' : 'flex'; applyFilters(); });
+  clearBtn?.addEventListener('click', () => { activeStatus = 'all'; sel.value = 'all'; clearBtn.style.display = 'none'; applyFilters(); });
+  _statusFilterBound = true;
+}
 
-  const table = document.getElementById('comparisonTable');
-  if (!table) return;
-  table.innerHTML = `<table style="width:100%;font-size:11px;">
-    <tr style="color:var(--bm);"><td>Säljare</td><td>Kunder</td><td>Besök/mån</td></tr>
-    ${stats.map(s => `<tr><td>${s.name}</td><td>${s.custCount}</td><td>${s.monthVisits}</td></tr>`).join('')}
-  </table>`;
+/* ── Rapport helpers ──────────────────────────────── */
+async function buildRapport() {
+  const isManager = hasRole('manager');
+
+  /* Destroy old charts */
+  Object.values(chartInstances).forEach(c => c.destroy());
+  chartInstances = {};
+
+  if (isManager && profiles.length) {
+    /* Manager: bar charts per salesperson */
+    document.getElementById('rapportTitle').textContent = 'Rapport — Alla säljare';
+
+    const now = new Date();
+    const thisMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const salespeople = profiles.filter(p => p.role === 'salesperson');
+    const names = salespeople.map(p => p.display_name);
+
+    /* Visits this month per SP */
+    const visitCounts = salespeople.map(p => allVisitsCache.filter(v => v.user_id === p.id && v.visited_at.startsWith(thisMonth)).length);
+
+    const isDark = document.body.classList.contains('dark');
+    const textColor = isDark ? '#f2f2f2' : '#303336';
+    const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+
+    chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
+      type: 'bar',
+      data: { labels: names, datasets: [{ label: 'Besök denna månad', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+    });
+
+    /* Revenue per SP (current year) */
+    let allRev = [];
+    try { allRev = await fetchAllRevenue(); } catch { /* */ }
+    const year = now.getFullYear();
+    const revAmounts = salespeople.map(p => {
+      const custIds = allCustomers.filter(c => c.assigned_to === p.id).map(c => c.id);
+      return allRev.filter(r => r.year === year && custIds.includes(r.customer_id)).reduce((s, r) => s + (r.amount || 0), 0);
+    });
+
+    chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
+      type: 'bar',
+      data: { labels: names, datasets: [{ label: `Omsättning ${year}`, data: revAmounts, backgroundColor: '#2ECC71', borderRadius: 2 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, callback: v => formatSEK(v) }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+    });
+  } else {
+    /* Salesperson: own stats over time */
+    document.getElementById('rapportTitle').textContent = 'Min rapport';
+
+    const isDark = document.body.classList.contains('dark');
+    const textColor = isDark ? '#f2f2f2' : '#303336';
+    const gridColor = isDark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.08)';
+
+    /* Visits per month (last 6 months) */
+    const months = [];
+    const visitCounts = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+      months.push(d.toLocaleDateString('sv-SE', { month: 'short' }));
+      visitCounts.push(allVisitsCache.filter(v => v.visited_at.startsWith(key)).length);
+    }
+
+    chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
+      type: 'bar',
+      data: { labels: months, datasets: [{ label: 'Besök', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+    });
+
+    /* Revenue per year */
+    let allRev = [];
+    try { allRev = await fetchAllRevenue(); } catch { /* */ }
+    const custIds = new Set(allCustomers.map(c => c.id));
+    const myRev = allRev.filter(r => custIds.has(r.customer_id));
+    const years = [...new Set(myRev.map(r => r.year))].sort();
+    const revAmounts = years.map(y => myRev.filter(r => r.year === y).reduce((s, r) => s + (r.amount || 0), 0));
+
+    chartInstances.revenue = new Chart(document.getElementById('chartRevenue'), {
+      type: 'bar',
+      data: { labels: years.map(String), datasets: [{ label: 'Omsättning', data: revAmounts, backgroundColor: '#2ECC71', borderRadius: 2 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, callback: v => formatSEK(v) }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+    });
+  }
+}
+
+/* ── CSV import helpers ──────────────────────────── */
+let _importRows = [];
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  /* Skip header */
+  return lines.slice(1).map(line => {
+    const cols = line.split(';').map(c => c.replace(/^"|"$/g, '').trim());
+    return { name: cols[0] || '', customer_nr: cols[1] || '', address: cols[2] || '', zip: cols[3] || '', city: cols[4] || '', status: cols[5] || 'active' };
+  }).filter(r => r.name && r.city);
 }
 
 /* ── Customer card rendering ───────────────────────── */
 async function renderCard(customerId) {
-  /* Search across allCustomers so card works even when filtered */
   const c = allCustomers.find(x => x.id === customerId) || customers.find(x => x.id === customerId);
   if (!c) return;
 
@@ -408,36 +457,24 @@ async function renderCard(customerId) {
   const isOwner = c.assigned_to === profile.id;
   const canEdit = isOwner || hasRole('admin');
 
-  const [visits, contacts, comments, revenue] = await Promise.all([
-    fetchVisits(customerId),
-    fetchContacts(customerId),
-    fetchComments(customerId),
-    fetchRevenue(customerId)
+  const [visits, contacts, comments, revenue, todos] = await Promise.all([
+    fetchVisits(customerId), fetchContacts(customerId), fetchComments(customerId), fetchRevenue(customerId),
+    fetchTodos(customerId).catch(() => [])
   ]);
 
   const days = daysSince(lastVisitMap[c.id]);
   const col = days === null ? '#EAC435' : visitColor(days);
-  const statusTxt = days === null ? 'Ej besökt' : days + ' dagar sedan';
-
-  const spName = profiles.length
-    ? profiles.find(p => p.id === c.assigned_to)?.display_name || '—'
-    : '';
-
+  const spName = profiles.length ? profiles.find(p => p.id === c.assigned_to)?.display_name || '—' : '';
   const revTotal = revenue.reduce((s, r) => s + (r.amount || 0), 0);
-
-  /* Status label */
   const statusLabels = { active: 'Aktiv', prospect: 'Prospekt', inactive: 'Inaktiv' };
   const statusClass = `status-${c.status || 'active'}`;
-
-  /* Next visit */
   const nv = nextVisitsCache.find(n => n.customer_id === customerId);
   const nvDate = nv ? nv.scheduled_date : '';
 
   const html = `
-    <!-- Top info -->
     <div class="card-top">
       <div style="flex:1;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap;">
           <h2 class="card-title">${c.name}</h2>
           <span class="card-status-badge ${statusClass}">${statusLabels[c.status] || 'Aktiv'}</span>
         </div>
@@ -450,27 +487,13 @@ async function renderCard(customerId) {
       </div>
     </div>
 
-    <!-- Stats row -->
     <div class="card-stats">
-      <div class="card-stat">
-        <div class="card-stat-num" style="color:${col};">${days === null ? '—' : days + 'd'}</div>
-        <div class="card-stat-label">Sedan besök</div>
-      </div>
-      <div class="card-stat">
-        <div class="card-stat-num">${visits.length}</div>
-        <div class="card-stat-label">Besök totalt</div>
-      </div>
-      <div class="card-stat">
-        <div class="card-stat-num">${contacts.length}</div>
-        <div class="card-stat-label">Kontakter</div>
-      </div>
-      <div class="card-stat">
-        <div class="card-stat-num">${revTotal ? formatSEK(revTotal) : '—'}</div>
-        <div class="card-stat-label">Omsättning</div>
-      </div>
+      <div class="card-stat"><div class="card-stat-num" style="color:${col};">${days === null ? '—' : days + 'd'}</div><div class="card-stat-label">Sedan besök</div></div>
+      <div class="card-stat"><div class="card-stat-num">${visits.length}</div><div class="card-stat-label">Besök totalt</div></div>
+      <div class="card-stat"><div class="card-stat-num">${contacts.length}</div><div class="card-stat-label">Kontakter</div></div>
+      <div class="card-stat"><div class="card-stat-num">${revTotal ? formatSEK(revTotal) : '—'}</div><div class="card-stat-label">Omsättning</div></div>
     </div>
 
-    <!-- Register visit + schedule next -->
     ${canEdit ? `
     <div class="card-section">
       <div class="card-section-header"><h3>Registrera besök</h3></div>
@@ -484,29 +507,39 @@ async function renderCard(customerId) {
         <button class="card-add-btn" onclick="CRM.cardSetNextVisit('${c.id}')" style="white-space:nowrap;">${nvDate ? 'Uppdatera' : 'Planera'}</button>
         ${nvDate ? `<button class="route-stop-remove" onclick="CRM.cardRemoveNextVisit('${c.id}')" title="Ta bort">&#x2715;</button>` : ''}
       </div>
-    </div>
-    ` : ''}
+    </div>` : ''}
 
-    <!-- Visit history -->
+    <!-- Todos -->
+    <div class="card-section">
+      <div class="card-section-header">
+        <h3>Att göra</h3>
+      </div>
+      ${canEdit ? `
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <input id="cardTodoText" class="card-input" placeholder="Ny uppgift..." style="flex:1;">
+        <button class="card-action-btn" onclick="CRM.cardAddTodo('${c.id}')">Lägg till</button>
+      </div>` : ''}
+      ${todos.length ? todos.map(t => `
+        <div class="todo-item ${t.done ? 'done' : ''}">
+          <input type="checkbox" ${t.done ? 'checked' : ''} onchange="CRM.cardToggleTodo('${t.id}', this.checked, '${c.id}')">
+          <span class="todo-text">${t.text}</span>
+          ${canEdit ? `<button class="route-stop-remove" onclick="CRM.cardDeleteTodo('${t.id}','${c.id}')">&#x2715;</button>` : ''}
+        </div>
+      `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga uppgifter</p>'}
+    </div>
+
     <div class="card-section">
       <div class="card-section-header"><h3>Besökshistorik</h3></div>
       ${visits.length ? visits.slice(0, 20).map(v => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bb);">
-          <div>
-            <span style="font-size:12px;font-weight:500;">${formatDate(v.visited_at)}</span>
-            ${v.comment ? `<span style="font-size:11px;color:var(--bm);margin-left:8px;">${v.comment}</span>` : ''}
-          </div>
+          <div><span style="font-size:12px;font-weight:500;">${formatDate(v.visited_at)}</span>${v.comment ? `<span style="font-size:11px;color:var(--bm);margin-left:8px;">${v.comment}</span>` : ''}</div>
           ${canEdit ? `<button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
         </div>
       `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga besök registrerade</p>'}
     </div>
 
-    <!-- Contacts -->
     <div class="card-section">
-      <div class="card-section-header">
-        <h3>Kontakter</h3>
-        ${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddContact('${c.id}')">+ Lägg till</button>` : ''}
-      </div>
+      <div class="card-section-header"><h3>Kontakter</h3>${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddContact()">+ Lägg till</button>` : ''}</div>
       <div id="addContactForm" style="display:none;margin-bottom:10px;">
         <input id="contactName" class="card-input" placeholder="Namn" style="margin-bottom:4px;">
         <input id="contactRole" class="card-input" placeholder="Roll/Titel" style="margin-bottom:4px;">
@@ -517,77 +550,34 @@ async function renderCard(customerId) {
       ${contacts.length ? contacts.map(ct => `
         <div style="padding:8px 0;border-bottom:1px solid var(--bb);">
           <div style="display:flex;justify-content:space-between;align-items:start;">
-            <div>
-              <span style="font-size:13px;font-weight:500;">${ct.name || ct.person_name}</span>
-              ${ct.is_primary ? '<span style="font-size:9px;background:var(--bd);color:var(--bl);padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px;">Primär</span>' : ''}
-              ${ct.role ? `<p style="font-size:11px;color:var(--bm);margin-top:2px;">${ct.role}</p>` : ''}
-            </div>
+            <div><span style="font-size:13px;font-weight:500;">${ct.name || ct.person_name}</span>${ct.is_primary ? '<span style="font-size:9px;background:var(--bd);color:var(--bl);padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px;">Primär</span>' : ''}${ct.role ? `<p style="font-size:11px;color:var(--bm);margin-top:2px;">${ct.role}</p>` : ''}</div>
             ${canEdit ? `<button onclick="CRM.cardDeleteContact('${ct.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
           </div>
-          <div style="margin-top:4px;font-size:12px;">
-            ${ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--bd);text-decoration:none;margin-right:12px;">${ct.phone}</a>` : ''}
-            ${ct.email ? `<a href="mailto:${ct.email}" style="color:var(--bd);text-decoration:none;">${ct.email}</a>` : ''}
-          </div>
+          <div style="margin-top:4px;font-size:12px;">${ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--bd);text-decoration:none;margin-right:12px;">${ct.phone}</a>` : ''}${ct.email ? `<a href="mailto:${ct.email}" style="color:var(--bd);text-decoration:none;">${ct.email}</a>` : ''}</div>
         </div>
       `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kontakter</p>'}
     </div>
 
-    <!-- Comments -->
     <div class="card-section">
       <div class="card-section-header"><h3>Kommentarer</h3></div>
-      ${canEdit ? `
-      <div style="display:flex;gap:8px;margin-bottom:10px;">
-        <input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;">
-        <button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button>
-      </div>
-      ` : ''}
+      ${canEdit ? `<div style="display:flex;gap:8px;margin-bottom:10px;"><input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;"><button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button></div>` : ''}
       ${comments.length ? comments.map(cm => `
         <div style="padding:6px 0;border-bottom:1px solid var(--bb);">
-          <div style="display:flex;justify-content:space-between;">
-            <span style="font-size:12px;">${cm.body || cm.text}</span>
-            ${canEdit ? `<button onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
-          </div>
+          <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;">${cm.body || cm.text}</span>${canEdit ? `<button onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}</div>
           <p style="font-size:10px;color:var(--bm);margin-top:2px;">${formatDate(cm.created_at)}</p>
         </div>
       `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kommentarer</p>'}
     </div>
 
-    <!-- Revenue -->
     <div class="card-section">
-      <div class="card-section-header">
-        <h3>Omsättning</h3>
-        ${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddRevenue('${c.id}')">+ Lägg till</button>` : ''}
-      </div>
+      <div class="card-section-header"><h3>Omsättning</h3>${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddRevenue()">+ Lägg till</button>` : ''}</div>
       <div id="addRevenueForm" style="display:none;margin-bottom:10px;">
-        <div style="display:flex;gap:8px;">
-          <input id="revYear" class="card-input" type="number" placeholder="År" value="${new Date().getFullYear()}" style="width:80px;">
-          <input id="revAmount" class="card-input" type="number" placeholder="Belopp (SEK)" style="flex:1;">
-          <button class="card-action-btn" onclick="CRM.cardAddRevenue('${c.id}')">Spara</button>
-        </div>
+        <div style="display:flex;gap:8px;"><input id="revYear" class="card-input" type="number" placeholder="År" value="${new Date().getFullYear()}" style="width:80px;"><input id="revAmount" class="card-input" type="number" placeholder="Belopp (SEK)" style="flex:1;"><button class="card-action-btn" onclick="CRM.cardAddRevenue('${c.id}')">Spara</button></div>
       </div>
-      ${revenue.length ? `
-        <table style="width:100%;font-size:12px;border-collapse:collapse;">
-          <tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;">
-            <td style="padding:4px 0;">År</td><td style="text-align:right;padding:4px 0;">Belopp</td>
-            ${canEdit ? '<td></td>' : ''}
-          </tr>
-          ${revenue.map(r => `
-            <tr style="border-bottom:1px solid var(--bb);">
-              <td style="padding:6px 0;">${r.year}</td>
-              <td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>
-              ${canEdit ? `<td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>` : ''}
-            </tr>
-          `).join('')}
-        </table>
-      ` : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
+      ${revenue.length ? `<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;"><td style="padding:4px 0;">År</td><td style="text-align:right;padding:4px 0;">Belopp</td>${canEdit ? '<td></td>' : ''}</tr>${revenue.map(r => `<tr style="border-bottom:1px solid var(--bb);"><td style="padding:6px 0;">${r.year}</td><td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>${canEdit ? `<td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>` : ''}</tr>`).join('')}</table>` : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
     </div>
 
-    <!-- Delete customer (admin only) -->
-    ${hasRole('admin') ? `
-    <div class="card-section" style="border-bottom:none;">
-      <button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button>
-    </div>
-    ` : ''}
+    ${hasRole('admin') ? `<div class="card-section" style="border-bottom:none;"><button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button></div>` : ''}
   `;
 
   document.getElementById('cardContent').innerHTML = html;
@@ -599,296 +589,121 @@ function renderRouteStops() {
   const countEl = document.getElementById('routeCount');
   if (!el) return;
   countEl.textContent = routeStops.length;
-
-  if (!routeStops.length) {
-    el.innerHTML = '<p style="font-size:11px;color:var(--bm);">Inga stopp valda</p>';
-    return;
-  }
-
+  if (!routeStops.length) { el.innerHTML = '<p style="font-size:11px;color:var(--bm);">Inga stopp valda</p>'; return; }
   el.innerHTML = routeStops.map((id, i) => {
     const c = allCustomers.find(x => x.id === id);
     if (!c) return '';
-    return `<div class="route-stop">
-      <span class="route-stop-num">${i + 1}</span>
-      <span class="route-stop-name">${c.name} <span style="color:var(--bm);font-size:10px;">${c.city}</span></span>
-      <button class="route-stop-remove" onclick="CRM.removeFromRoute('${id}')">&#x2715;</button>
-    </div>`;
+    return `<div class="route-stop"><span class="route-stop-num">${i + 1}</span><span class="route-stop-name">${c.name} <span style="color:var(--bm);font-size:10px;">${c.city}</span></span><button class="route-stop-remove" onclick="CRM.removeFromRoute('${id}')">&#x2715;</button></div>`;
   }).join('');
 }
 
 function renderRouteSearch(query) {
   const el = document.getElementById('routeSearchResults');
   if (!el || !query) { if (el) el.innerHTML = ''; return; }
-
   const q = query.toLowerCase();
-  const results = allCustomers
-    .filter(c => c.lat && !routeStops.includes(c.id) &&
-      (c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q) || c.customer_nr.toLowerCase().includes(q)))
-    .slice(0, 8);
-
-  el.innerHTML = results.map(c =>
-    `<div class="route-search-item" onclick="CRM.addToRoute('${c.id}')">${c.name} <span style="color:var(--bm);font-size:10px;">${c.city}</span></div>`
-  ).join('') || '<p style="font-size:11px;color:var(--bm);padding:4px;">Inga resultat</p>';
+  const results = allCustomers.filter(c => c.lat && !routeStops.includes(c.id) && (c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q) || c.customer_nr.toLowerCase().includes(q))).slice(0, 8);
+  el.innerHTML = results.map(c => `<div class="route-search-item" onclick="CRM.addToRoute('${c.id}')">${c.name} <span style="color:var(--bm);font-size:10px;">${c.city}</span></div>`).join('') || '<p style="font-size:11px;color:var(--bm);padding:4px;">Inga resultat</p>';
 }
 
 /* ── Admin panel helpers ──────────────────────────── */
 async function renderAdminUsers() {
   const el = document.getElementById('adminUsersList');
   if (!el) return;
-
   if (!profiles.length) profiles = await fetchAllProfiles();
-
-  el.innerHTML = profiles.map(p => `
-    <div class="admin-user-row">
-      <span class="admin-user-name">${p.display_name}</span>
-      <span class="admin-user-email">${p.email}</span>
-      <span class="admin-user-role">
-        <select onchange="CRM.changeRole('${p.id}', this.value)" ${p.id === getProfile().id ? 'disabled' : ''}>
-          <option value="salesperson" ${p.role === 'salesperson' ? 'selected' : ''}>Säljare</option>
-          <option value="manager" ${p.role === 'manager' ? 'selected' : ''}>Chef</option>
-          <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
-        </select>
-      </span>
-    </div>
-  `).join('');
+  el.innerHTML = profiles.map(p => `<div class="admin-user-row"><span class="admin-user-name">${p.display_name}</span><span class="admin-user-email">${p.email}</span><span class="admin-user-role"><select onchange="CRM.changeRole('${p.id}', this.value)" ${p.id === getProfile().id ? 'disabled' : ''}><option value="salesperson" ${p.role === 'salesperson' ? 'selected' : ''}>Säljare</option><option value="manager" ${p.role === 'manager' ? 'selected' : ''}>Chef</option><option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option></select></span></div>`).join('');
 }
 
 function renderReassignDropdowns() {
-  const opts = profiles.filter(p => p.role === 'salesperson').map(p =>
-    `<option value="${p.id}">${p.display_name}</option>`
-  ).join('');
-
+  const opts = profiles.filter(p => p.role === 'salesperson').map(p => `<option value="${p.id}">${p.display_name}</option>`).join('');
   document.getElementById('reassignFrom').innerHTML = '<option value="">Välj...</option>' + opts;
   document.getElementById('reassignTo').innerHTML = '<option value="">Välj...</option>' + opts;
-
   document.getElementById('reassignFrom').onchange = () => renderReassignList();
+
+  /* Import assign dropdown */
+  const importSel = document.getElementById('importAssign');
+  if (importSel) importSel.innerHTML = profiles.map(p => `<option value="${p.id}">${p.display_name}</option>`).join('');
 }
 
 function renderReassignList() {
   const fromId = document.getElementById('reassignFrom').value;
   const el = document.getElementById('reassignList');
   if (!fromId || !el) { if (el) el.innerHTML = ''; return; }
-
   const custs = allCustomers.filter(c => c.assigned_to === fromId);
-  el.innerHTML = custs.length ? custs.map(c => `
-    <div class="reassign-item">
-      <label><input type="checkbox" value="${c.id}" checked> ${c.name} <span style="color:var(--bm);font-size:10px;">(${c.city})</span></label>
-    </div>
-  `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kunder</p>';
+  el.innerHTML = custs.length ? custs.map(c => `<div class="reassign-item"><label><input type="checkbox" value="${c.id}" checked> ${c.name} <span style="color:var(--bm);font-size:10px;">(${c.city})</span></label></div>`).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kunder</p>';
 }
 
-/* ── Global CRM actions (for onclick handlers) ────── */
+/* ── Global CRM actions ───────────────────────────── */
 window.CRM = {
-  /* Visit registration */
   async registerVisit(customerId) {
     const input = document.getElementById('vc_' + customerId);
-    const comment = input ? input.value.trim() : '';
-    await registerVisit(customerId, getProfile().id, comment);
+    await registerVisit(customerId, getProfile().id, input ? input.value.trim() : '');
     await refreshAll();
   },
 
-  /* Card open/close */
   async openCard(customerId) {
     document.getElementById('customerCard').classList.add('open');
     document.getElementById('cardOverlay').classList.add('open');
     document.getElementById('cardContent').innerHTML = '<p style="padding:40px;text-align:center;color:var(--bm);">Laddar...</p>';
-
     const sidebar = document.getElementById('sidebar');
-    if (sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      document.getElementById('dashBtn').classList.remove('active');
-      invalidateSize();
-    }
+    if (sidebar.classList.contains('open')) { sidebar.classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); invalidateSize(); }
     getMapInstance()?.closePopup();
     await renderCard(customerId);
   },
 
-  closeCard() {
-    document.getElementById('customerCard').classList.remove('open');
-    document.getElementById('cardOverlay').classList.remove('open');
-  },
+  closeCard() { document.getElementById('customerCard').classList.remove('open'); document.getElementById('cardOverlay').classList.remove('open'); },
 
-  /* Card actions */
-  async cardRegisterVisit(customerId) {
-    const input = document.getElementById('cardVisitComment');
-    const comment = input ? input.value.trim() : '';
-    await registerVisit(customerId, getProfile().id, comment);
-    await refreshAll();
-    await renderCard(customerId);
-  },
+  async cardRegisterVisit(cid) { const i = document.getElementById('cardVisitComment'); await registerVisit(cid, getProfile().id, i ? i.value.trim() : ''); await refreshAll(); await renderCard(cid); },
+  async cardDeleteVisit(vid, cid) { await deleteVisit(vid); await refreshAll(); await renderCard(cid); },
+  async cardSetNextVisit(cid) { const d = document.getElementById('cardNextVisit')?.value; if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
+  async cardRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
+  async dashChangeNextVisit(cid, d) { if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); },
+  async dashRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); },
 
-  async cardDeleteVisit(visitId, customerId) {
-    await deleteVisit(visitId);
-    await refreshAll();
-    await renderCard(customerId);
-  },
+  /* Todos */
+  async cardAddTodo(cid) { const i = document.getElementById('cardTodoText'); const t = i?.value.trim(); if (!t) return; await addTodo(cid, getProfile().id, t); await renderCard(cid); },
+  async cardToggleTodo(tid, done, cid) { await toggleTodo(tid, done); await renderCard(cid); },
+  async cardDeleteTodo(tid, cid) { await deleteTodo(tid); await renderCard(cid); },
 
-  /* Next visit scheduling */
-  async cardSetNextVisit(customerId) {
-    const input = document.getElementById('cardNextVisit');
-    const date = input ? input.value : '';
-    if (!date) return;
-    await setNextVisit(customerId, date);
-    try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
-    updatePlannedVisits();
-    await renderCard(customerId);
-  },
+  toggleAddContact() { const f = document.getElementById('addContactForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; },
+  async cardAddContact(cid) { const n = document.getElementById('contactName').value.trim(); if (!n) return; await addContact(cid, { name: n, role: document.getElementById('contactRole').value.trim() || null, phone: document.getElementById('contactPhone').value.trim() || null, email: document.getElementById('contactEmail').value.trim() || null }); await renderCard(cid); },
+  async cardDeleteContact(ctid, cid) { await deleteContact(ctid); await renderCard(cid); },
+  async cardAddComment(cid) { const t = document.getElementById('cardCommentText')?.value.trim(); if (!t) return; await addComment(cid, getProfile().id, t); await renderCard(cid); },
+  async cardDeleteComment(cmid, cid) { await deleteComment(cmid); await renderCard(cid); },
+  toggleAddRevenue() { const f = document.getElementById('addRevenueForm'); f.style.display = f.style.display === 'none' ? 'block' : 'none'; },
+  async cardAddRevenue(cid) { const y = parseInt(document.getElementById('revYear').value); const a = parseFloat(document.getElementById('revAmount').value); if (!y || !a) return; await upsertRevenue(cid, y, a); await renderCard(cid); },
+  async cardDeleteRevenue(rid, cid) { await deleteRevenue(rid); await renderCard(cid); },
+  async cardDeleteCustomer(cid) { if (!confirm('Vill du verkligen ta bort denna kund? Allt data raderas permanent.')) return; await deleteCustomer(cid); CRM.closeCard(); await refreshAll(); },
 
-  async cardRemoveNextVisit(customerId) {
-    await removeNextVisit(customerId);
-    try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
-    updatePlannedVisits();
-    await renderCard(customerId);
-  },
-
-  /* Dashboard: change/remove planned visit */
-  async dashChangeNextVisit(customerId, newDate) {
-    if (!newDate) return;
-    await setNextVisit(customerId, newDate);
-    try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
-    updatePlannedVisits();
-  },
-
-  async dashRemoveNextVisit(customerId) {
-    await removeNextVisit(customerId);
-    try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
-    updatePlannedVisits();
-  },
-
-  /* Contacts */
-  toggleAddContact() {
-    const form = document.getElementById('addContactForm');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  },
-
-  async cardAddContact(customerId) {
-    const name = document.getElementById('contactName').value.trim();
-    if (!name) return;
-    await addContact(customerId, {
-      name,
-      role: document.getElementById('contactRole').value.trim() || null,
-      phone: document.getElementById('contactPhone').value.trim() || null,
-      email: document.getElementById('contactEmail').value.trim() || null
-    });
-    await renderCard(customerId);
-  },
-
-  async cardDeleteContact(contactId, customerId) {
-    await deleteContact(contactId);
-    await renderCard(customerId);
-  },
-
-  /* Comments */
-  async cardAddComment(customerId) {
-    const input = document.getElementById('cardCommentText');
-    const text = input ? input.value.trim() : '';
-    if (!text) return;
-    await addComment(customerId, getProfile().id, text);
-    await renderCard(customerId);
-  },
-
-  async cardDeleteComment(commentId, customerId) {
-    await deleteComment(commentId);
-    await renderCard(customerId);
-  },
-
-  /* Revenue */
-  toggleAddRevenue() {
-    const form = document.getElementById('addRevenueForm');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-  },
-
-  async cardAddRevenue(customerId) {
-    const year = parseInt(document.getElementById('revYear').value);
-    const amount = parseFloat(document.getElementById('revAmount').value);
-    if (!year || !amount) return;
-    await upsertRevenue(customerId, year, amount);
-    await renderCard(customerId);
-  },
-
-  async cardDeleteRevenue(revenueId, customerId) {
-    await deleteRevenue(revenueId);
-    await renderCard(customerId);
-  },
-
-  /* Delete customer */
-  async cardDeleteCustomer(customerId) {
-    if (!confirm('Vill du verkligen ta bort denna kund? Allt data (besök, kontakter, kommentarer, omsättning) raderas permanent.')) return;
-    await deleteCustomer(customerId);
-    CRM.closeCard();
-    await refreshAll();
-  },
-
-  /* ── Add customer ─────────────────────────────────── */
+  /* Add customer */
   openAddCustomer() {
     document.getElementById('addCustModal').classList.add('active');
-    document.getElementById('acName').value = '';
-    document.getElementById('acNr').value = '';
-    document.getElementById('acAddress').value = '';
-    document.getElementById('acZip').value = '';
-    document.getElementById('acCity').value = '';
+    ['acName','acNr','acAddress','acZip','acCity'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('acStatus').value = 'active';
     document.getElementById('acError').style.display = 'none';
-
-    /* Populate assign dropdown for admin */
     if (hasRole('admin') && profiles.length) {
       const sel = document.getElementById('acAssign');
-      sel.innerHTML = `<option value="${getProfile().id}">${getProfile().display_name} (jag)</option>` +
-        profiles.filter(p => p.id !== getProfile().id).map(p =>
-          `<option value="${p.id}">${p.display_name}</option>`
-        ).join('');
+      sel.innerHTML = `<option value="${getProfile().id}">${getProfile().display_name} (jag)</option>` + profiles.filter(p => p.id !== getProfile().id).map(p => `<option value="${p.id}">${p.display_name}</option>`).join('');
     }
   },
-
-  closeAddCustomer() {
-    document.getElementById('addCustModal').classList.remove('active');
-  },
-
+  closeAddCustomer() { document.getElementById('addCustModal').classList.remove('active'); },
   async saveNewCustomer() {
     const name = document.getElementById('acName').value.trim();
     const city = document.getElementById('acCity').value.trim();
-    const errEl = document.getElementById('acError');
-
-    if (!name || !city) {
-      errEl.textContent = 'Företagsnamn och ort krävs.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    errEl.style.display = 'none';
-
+    const err = document.getElementById('acError');
+    if (!name || !city) { err.textContent = 'Företagsnamn och ort krävs.'; err.style.display = 'block'; return; }
+    err.style.display = 'none';
     const address = document.getElementById('acAddress').value.trim();
     const zip = document.getElementById('acZip').value.trim();
-    const geoQuery = [address, zip, city].filter(Boolean).join(', ');
-    const coords = await geocodeAddress(geoQuery);
-
-    const customer = {
-      name,
-      customer_nr: document.getElementById('acNr').value.trim(),
-      address,
-      zip,
-      city,
-      status: document.getElementById('acStatus').value,
-      assigned_to: hasRole('admin') ? document.getElementById('acAssign').value : getProfile().id,
-      lat: coords?.lat || null,
-      lng: coords?.lng || null
-    };
-
+    const coords = await geocodeAddress([address, zip, city].filter(Boolean).join(', '));
     try {
-      await createCustomer(customer);
-      CRM.closeAddCustomer();
-      await refreshAll();
-    } catch (e) {
-      errEl.textContent = 'Kunde inte spara: ' + (e.message || e);
-      errEl.style.display = 'block';
-    }
+      await createCustomer({ name, customer_nr: document.getElementById('acNr').value.trim(), address, zip, city, status: document.getElementById('acStatus').value, assigned_to: hasRole('admin') ? document.getElementById('acAssign').value : getProfile().id, lat: coords?.lat || null, lng: coords?.lng || null });
+      CRM.closeAddCustomer(); await refreshAll();
+    } catch (e) { err.textContent = 'Kunde inte spara: ' + (e.message || e); err.style.display = 'block'; }
   },
 
-  /* ── Edit customer ────────────────────────────────── */
-  openEditCustomer(customerId) {
-    const c = allCustomers.find(x => x.id === customerId);
-    if (!c) return;
-
+  /* Edit customer */
+  openEditCustomer(cid) {
+    const c = allCustomers.find(x => x.id === cid); if (!c) return;
     document.getElementById('editCustModal').classList.add('active');
     document.getElementById('ecId').value = c.id;
     document.getElementById('ecName').value = c.name;
@@ -898,283 +713,188 @@ window.CRM = {
     document.getElementById('ecCity').value = c.city || '';
     document.getElementById('ecStatus').value = c.status || 'active';
     document.getElementById('ecError').style.display = 'none';
-
     if (hasRole('admin') && profiles.length) {
-      const sel = document.getElementById('ecAssign');
-      sel.innerHTML = profiles.map(p =>
-        `<option value="${p.id}" ${p.id === c.assigned_to ? 'selected' : ''}>${p.display_name}</option>`
-      ).join('');
+      document.getElementById('ecAssign').innerHTML = profiles.map(p => `<option value="${p.id}" ${p.id === c.assigned_to ? 'selected' : ''}>${p.display_name}</option>`).join('');
     }
   },
-
-  closeEditCustomer() {
-    document.getElementById('editCustModal').classList.remove('active');
-  },
-
+  closeEditCustomer() { document.getElementById('editCustModal').classList.remove('active'); },
   async saveEditCustomer() {
     const id = document.getElementById('ecId').value;
     const name = document.getElementById('ecName').value.trim();
     const city = document.getElementById('ecCity').value.trim();
-    const errEl = document.getElementById('ecError');
-
-    if (!name || !city) {
-      errEl.textContent = 'Företagsnamn och ort krävs.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    errEl.style.display = 'none';
-
+    const err = document.getElementById('ecError');
+    if (!name || !city) { err.textContent = 'Företagsnamn och ort krävs.'; err.style.display = 'block'; return; }
+    err.style.display = 'none';
     const address = document.getElementById('ecAddress').value.trim();
     const zip = document.getElementById('ecZip').value.trim();
-
-    /* Re-geocode if address changed */
     const old = allCustomers.find(x => x.id === id);
     let lat = old?.lat, lng = old?.lng;
     if (old && (address !== old.address || zip !== old.zip || city !== old.city)) {
-      const geoQuery = [address, zip, city].filter(Boolean).join(', ');
-      const coords = await geocodeAddress(geoQuery);
+      const coords = await geocodeAddress([address, zip, city].filter(Boolean).join(', '));
       if (coords) { lat = coords.lat; lng = coords.lng; }
     }
-
-    const updates = {
-      name,
-      customer_nr: document.getElementById('ecNr').value.trim(),
-      address,
-      zip,
-      city,
-      status: document.getElementById('ecStatus').value,
-      lat,
-      lng
-    };
-
-    if (hasRole('admin')) {
-      updates.assigned_to = document.getElementById('ecAssign').value;
-    }
-
-    try {
-      await updateCustomer(id, updates);
-      CRM.closeEditCustomer();
-      await refreshAll();
-      await renderCard(id);
-    } catch (e) {
-      errEl.textContent = 'Kunde inte spara: ' + (e.message || e);
-      errEl.style.display = 'block';
-    }
+    const updates = { name, customer_nr: document.getElementById('ecNr').value.trim(), address, zip, city, status: document.getElementById('ecStatus').value, lat, lng };
+    if (hasRole('admin')) updates.assigned_to = document.getElementById('ecAssign').value;
+    try { await updateCustomer(id, updates); CRM.closeEditCustomer(); await refreshAll(); await renderCard(id); }
+    catch (e) { err.textContent = 'Kunde inte spara: ' + (e.message || e); err.style.display = 'block'; }
   },
 
-  /* ── Admin panel ──────────────────────────────────── */
-  openAdmin() {
-    document.getElementById('adminModal').classList.add('active');
-    renderAdminUsers();
-    renderReassignDropdowns();
-  },
-
-  closeAdmin() {
-    document.getElementById('adminModal').classList.remove('active');
-  },
-
+  /* Admin */
+  openAdmin() { document.getElementById('adminModal').classList.add('active'); renderAdminUsers(); renderReassignDropdowns(); },
+  closeAdmin() { document.getElementById('adminModal').classList.remove('active'); },
   adminTab(tab) {
-    document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.querySelectorAll('#adminModal .admin-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('adminUsersTab').style.display = tab === 'users' ? 'block' : 'none';
     document.getElementById('adminReassignTab').style.display = tab === 'reassign' ? 'block' : 'none';
+    document.getElementById('adminImportTab').style.display = tab === 'import' ? 'block' : 'none';
   },
-
-  async changeRole(userId, newRole) {
-    const { error } = await sb
-      .from('profiles')
-      .update({ role: newRole })
-      .eq('id', userId);
-    if (error) { alert('Kunde inte ändra roll: ' + error.message); return; }
-    /* Refresh profiles */
-    profiles = await fetchAllProfiles();
-    renderAdminUsers();
+  async changeRole(uid, role) {
+    const { error } = await sb.from('profiles').update({ role }).eq('id', uid);
+    if (error) { alert('Fel: ' + error.message); return; }
+    profiles = await fetchAllProfiles(); renderAdminUsers();
   },
-
   async executeReassign() {
     const toId = document.getElementById('reassignTo').value;
     if (!toId) { alert('Välj en mottagande säljare.'); return; }
-
-    const checkboxes = document.querySelectorAll('#reassignList input[type="checkbox"]:checked');
-    const ids = [...checkboxes].map(cb => cb.value);
+    const ids = [...document.querySelectorAll('#reassignList input:checked')].map(cb => cb.value);
     if (!ids.length) { alert('Inga kunder valda.'); return; }
+    try { await reassignCustomers(ids, toId); await refreshAll(); renderReassignList(); alert(`${ids.length} kund(er) flyttade.`); }
+    catch (e) { alert('Fel: ' + (e.message || e)); }
+  },
 
-    try {
-      await reassignCustomers(ids, toId);
-      await refreshAll();
-      renderReassignList();
-      alert(`${ids.length} kund(er) flyttade.`);
-    } catch (e) {
-      alert('Fel: ' + (e.message || e));
+  /* Admin CSV import */
+  async runAdminImport() {
+    const assignTo = document.getElementById('importAssign').value;
+    const msgEl = document.getElementById('adminImportMsg');
+    if (!_importRows.length) return;
+    msgEl.style.display = 'block'; msgEl.style.color = 'var(--bm)'; msgEl.textContent = `Importerar ${_importRows.length} kunder...`;
+
+    let ok = 0, fail = 0;
+    for (const r of _importRows) {
+      try {
+        const coords = await geocodeAddress([r.address, r.zip, r.city].filter(Boolean).join(', '));
+        await createCustomer({ ...r, assigned_to: assignTo, lat: coords?.lat || null, lng: coords?.lng || null });
+        ok++;
+      } catch { fail++; }
     }
+    msgEl.style.color = '#2ECC71';
+    msgEl.textContent = `Klart! ${ok} importerade${fail ? `, ${fail} misslyckades` : ''}.`;
+    _importRows = [];
+    document.getElementById('adminImportBtn').style.display = 'none';
+    await refreshAll();
   },
 
-  /* ── Route planner ────────────────────────────────── */
-  openRoutePanel() {
-    document.getElementById('routePanel').style.display = 'block';
-    renderRouteStops();
+  /* Rapport */
+  async openRapport() {
+    document.getElementById('rapportModal').classList.add('active');
+    CRM.rapportTab('visits');
+    await buildRapport();
+  },
+  closeRapport() {
+    document.getElementById('rapportModal').classList.remove('active');
+    Object.values(chartInstances).forEach(c => c.destroy());
+    chartInstances = {};
+  },
+  rapportTab(tab) {
+    document.querySelectorAll('#rapportTabs .admin-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('rapportVisitsTab').style.display = tab === 'visits' ? 'block' : 'none';
+    document.getElementById('rapportRevenueTab').style.display = tab === 'revenue' ? 'block' : 'none';
   },
 
-  closeRoutePanel() {
-    document.getElementById('routePanel').style.display = 'none';
-  },
-
-  addToRoute(customerId) {
-    if (routeStops.includes(customerId)) return;
-    const c = allCustomers.find(x => x.id === customerId);
+  /* Route planner */
+  openRoutePanel() { document.getElementById('routePanel').style.display = 'block'; renderRouteStops(); },
+  closeRoutePanel() { document.getElementById('routePanel').style.display = 'none'; },
+  addToRoute(cid) {
+    if (routeStops.includes(cid)) return;
+    const c = allCustomers.find(x => x.id === cid);
     if (!c || !c.lat) return;
-    routeStops.push(customerId);
-    renderRouteStops();
-    /* Open panel if not visible */
+    routeStops.push(cid); renderRouteStops();
     document.getElementById('routePanel').style.display = 'block';
-    /* Clear search */
-    const searchEl = document.getElementById('routeSearch');
-    if (searchEl) { searchEl.value = ''; renderRouteSearch(''); }
+    const s = document.getElementById('routeSearch'); if (s) { s.value = ''; renderRouteSearch(''); }
   },
-
-  removeFromRoute(customerId) {
-    routeStops = routeStops.filter(id => id !== customerId);
-    renderRouteStops();
-  },
-
-  clearRoute() {
-    routeStops = [];
-    renderRouteStops();
-  },
-
+  removeFromRoute(cid) { routeStops = routeStops.filter(id => id !== cid); renderRouteStops(); },
+  clearRoute() { routeStops = []; renderRouteStops(); },
   optimizeRoute() {
-    if (routeStops.length < 2) {
-      /* Single stop — just open Google Maps directions */
-      if (routeStops.length === 1) {
-        const c = allCustomers.find(x => x.id === routeStops[0]);
-        if (c) window.open(googleMapsUrl(c), '_blank');
-      }
-      return;
-    }
-
-    /* Simple nearest-neighbor optimization */
+    if (routeStops.length < 2) { if (routeStops.length === 1) { const c = allCustomers.find(x => x.id === routeStops[0]); if (c) window.open(googleMapsUrl(c), '_blank'); } return; }
     const stops = routeStops.map(id => allCustomers.find(x => x.id === id)).filter(Boolean);
-    const optimized = [stops[0]];
-    const remaining = stops.slice(1);
-
-    while (remaining.length) {
-      const last = optimized[optimized.length - 1];
-      let nearest = 0;
-      let minDist = Infinity;
-      remaining.forEach((c, i) => {
-        const d = haversine(last.lat, last.lng, c.lat, c.lng);
-        if (d < minDist) { minDist = d; nearest = i; }
-      });
-      optimized.push(remaining.splice(nearest, 1)[0]);
-    }
-
-    /* Build Google Maps multi-stop URL */
+    const optimized = [stops[0]]; const remaining = stops.slice(1);
+    while (remaining.length) { const last = optimized[optimized.length - 1]; let nearest = 0, minDist = Infinity; remaining.forEach((c, i) => { const d = haversine(last.lat, last.lng, c.lat, c.lng); if (d < minDist) { minDist = d; nearest = i; } }); optimized.push(remaining.splice(nearest, 1)[0]); }
     const origin = `${optimized[0].address || ''}, ${optimized[0].zip || ''} ${optimized[0].city}`;
     const dest = `${optimized[optimized.length - 1].address || ''}, ${optimized[optimized.length - 1].zip || ''} ${optimized[optimized.length - 1].city}`;
-    const waypoints = optimized.slice(1, -1).map(c =>
-      encodeURIComponent(`${c.address || ''}, ${c.zip || ''} ${c.city}`)
-    ).join('|');
-
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&waypoints=${waypoints}&travelmode=driving`;
-    window.open(url, '_blank');
-
-    /* Update stop order */
-    routeStops = optimized.map(c => c.id);
-    renderRouteStops();
+    const waypoints = optimized.slice(1, -1).map(c => encodeURIComponent(`${c.address || ''}, ${c.zip || ''} ${c.city}`)).join('|');
+    window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&waypoints=${waypoints}&travelmode=driving`, '_blank');
+    routeStops = optimized.map(c => c.id); renderRouteStops();
   }
 };
 
 /* ── Event bindings ─────────────────────────────────── */
 function bindEvents() {
-  /* Search */
   document.getElementById('search').addEventListener('input', e => search(e.target.value));
 
-  /* Home */
   document.getElementById('homeBtn').addEventListener('click', () => {
-    resetView();
-    document.getElementById('search').value = '';
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-      document.getElementById('dashBtn').classList.remove('active');
-      invalidateSize();
-    }
+    resetView(); document.getElementById('search').value = '';
+    const sb = document.getElementById('sidebar');
+    if (sb.classList.contains('open')) { sb.classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); invalidateSize(); }
   });
 
-  /* Dashboard toggle */
   document.getElementById('dashBtn').addEventListener('click', () => {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('open');
-    document.getElementById('dashBtn').classList.toggle('active');
-    invalidateSize();
+    const sb = document.getElementById('sidebar'); sb.classList.toggle('open'); document.getElementById('dashBtn').classList.toggle('active'); invalidateSize();
   });
 
-  /* Sidebar close */
-  const closeSidebar = () => {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('dashBtn').classList.remove('active');
-    invalidateSize();
-  };
-
-  document.getElementById('sidebarCloseBtn').addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    closeSidebar();
-  });
-
+  const closeSidebar = () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); invalidateSize(); };
+  document.getElementById('sidebarCloseBtn').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); closeSidebar(); });
   document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
 
-  /* Add customer button */
   document.getElementById('addCustBtn').addEventListener('click', () => CRM.openAddCustomer());
-
-  /* Route planner button */
   document.getElementById('routeBtn').addEventListener('click', () => {
-    const panel = document.getElementById('routePanel');
-    if (panel.style.display === 'none' || !panel.style.display) {
-      CRM.openRoutePanel();
-    } else {
-      CRM.closeRoutePanel();
-    }
+    const p = document.getElementById('routePanel');
+    p.style.display === 'none' || !p.style.display ? CRM.openRoutePanel() : CRM.closeRoutePanel();
   });
-
-  /* Route search */
   document.getElementById('routeSearch')?.addEventListener('input', e => renderRouteSearch(e.target.value));
-
-  /* Admin button */
   document.getElementById('adminBtn').addEventListener('click', () => CRM.openAdmin());
+  document.getElementById('rapportBtn').addEventListener('click', () => CRM.openRapport());
 
-  /* Theme */
-  document.getElementById('themeBtn').addEventListener('click', function () {
-    const dark = toggleTheme();
-    this.textContent = dark ? '☀️' : '🌙';
+  /* Admin CSV file input */
+  document.getElementById('adminCsvFile')?.addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      _importRows = parseCSV(reader.result);
+      const preview = document.getElementById('adminImportPreview');
+      const btn = document.getElementById('adminImportBtn');
+      if (_importRows.length) {
+        preview.innerHTML = `<p style="margin-bottom:6px;"><strong>${_importRows.length} kunder hittade</strong></p>` +
+          _importRows.slice(0, 5).map(r => `<div style="padding:3px 0;border-bottom:1px solid var(--bb);">${r.name} — ${r.city}</div>`).join('') +
+          (_importRows.length > 5 ? `<p style="color:var(--bm);margin-top:4px;">...och ${_importRows.length - 5} till</p>` : '');
+        btn.style.display = '';
+      } else {
+        preview.innerHTML = '<p style="color:#c0392b;">Kunde inte tolka CSV. Kontrollera format.</p>';
+        btn.style.display = 'none';
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
   });
 
-  /* Logout */
+  /* Status filter */
+  bindStatusFilter();
+
+  document.getElementById('themeBtn').addEventListener('click', function () { this.textContent = toggleTheme() ? '☀️' : '🌙'; });
   document.getElementById('logoutBtn').addEventListener('click', () => logout());
 
-  /* Filters */
   document.querySelectorAll('.filter-chip').forEach(chip => {
     chip.addEventListener('click', function () {
       document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
       this.classList.add('active');
       setFilter(this.dataset.filter);
-      refreshAll();
+      applyFilters();
     });
   });
 
-  /* Export CSV */
   document.getElementById('exportBtn').addEventListener('click', () => {
     const header = '"Kundnr";"Företagsnamn";"Adress";"Postnr";"Ort";"Status";"Senaste besök"';
-    const rows = customers.map(c => {
-      const lv = lastVisitMap[c.id] ? formatDate(lastVisitMap[c.id]) : '';
-      return `"${c.customer_nr}";"${c.name}";"${c.address || ''}";"${c.zip || ''}";"${c.city}";"${c.status}";"${lv}"`;
-    });
-    const csv = '﻿' + header + '\n' + rows.join('\n') + '\n';
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'berkeley_crm_export.csv';
-    a.click();
+    const rows = customers.map(c => { const lv = lastVisitMap[c.id] ? formatDate(lastVisitMap[c.id]) : ''; return `"${c.customer_nr}";"${c.name}";"${c.address || ''}";"${c.zip || ''}";"${c.city}";"${c.status}";"${lv}"`; });
+    const blob = new Blob(['﻿' + header + '\n' + rows.join('\n') + '\n'], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'berkeley_crm_export.csv'; a.click();
   });
 }
 
