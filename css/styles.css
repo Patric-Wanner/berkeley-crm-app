@@ -1228,7 +1228,7 @@ body.dark .sp-filter-select {
     border-top: 1px solid var(--bb);
     border-radius: 12px 12px 0 0;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, .15);
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   .sidebar.open {
@@ -1237,11 +1237,15 @@ body.dark .sp-filter-select {
   }
 
   .sidebar-header {
-    position: sticky;
-    top: 0;
+    flex-shrink: 0;
     background: var(--bw);
-    z-index: 1;
     padding-top: 20px;
+  }
+
+  .sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Close button visible on mobile */

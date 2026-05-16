@@ -59,38 +59,40 @@
         <p style="font-size:11px;color:var(--bm);" id="dashDate"></p>
       </div>
 
-      <!-- Manager: salesperson filter -->
-      <div class="sidebar-section" data-role="manager" style="display:none;">
-        <h3>Säljare</h3>
-        <select id="spFilter" class="sp-filter-select"></select>
-      </div>
-
-      <div class="sidebar-section">
-        <h3>Översikt</h3>
-        <div class="stat-grid" id="statsGrid"></div>
-      </div>
-
-      <div class="sidebar-section">
-        <h3>Filter</h3>
-        <div class="filter-bar" id="filterBar">
-          <div class="filter-chip active" data-filter="all">Alla</div>
-          <div class="filter-chip" data-filter="green"><span class="filter-dot" style="background:#2ECC71;"></span>0–30d</div>
-          <div class="filter-chip" data-filter="yellow"><span class="filter-dot" style="background:#EAC435;"></span>31–59d</div>
-          <div class="filter-chip" data-filter="orange"><span class="filter-dot" style="background:#E67E22;"></span>60–89d</div>
-          <div class="filter-chip" data-filter="red"><span class="filter-dot" style="background:#E74C3C;"></span>90+d</div>
-          <div class="filter-chip" data-filter="novisit"><span class="filter-dot" style="background:#EAC435;border:1px solid #ccc;"></span>Ej besökt</div>
+      <div class="sidebar-scroll">
+        <!-- Manager: salesperson filter -->
+        <div class="sidebar-section" data-role="manager" style="display:none;">
+          <h3>Säljare</h3>
+          <select id="spFilter" class="sp-filter-select"></select>
         </div>
-      </div>
 
-      <div class="sidebar-section">
-        <h3>Behöver besökas</h3>
-        <div id="toplist"></div>
-      </div>
+        <div class="sidebar-section">
+          <h3>Översikt</h3>
+          <div class="stat-grid" id="statsGrid"></div>
+        </div>
 
-      <!-- Manager: comparison stats -->
-      <div class="sidebar-section" data-role="manager" style="display:none;">
-        <h3>Jämförelse</h3>
-        <div id="comparisonTable"></div>
+        <div class="sidebar-section">
+          <h3>Filter</h3>
+          <div class="filter-bar" id="filterBar">
+            <div class="filter-chip active" data-filter="all">Alla</div>
+            <div class="filter-chip" data-filter="green"><span class="filter-dot" style="background:#2ECC71;"></span>0–30d</div>
+            <div class="filter-chip" data-filter="yellow"><span class="filter-dot" style="background:#EAC435;"></span>31–59d</div>
+            <div class="filter-chip" data-filter="orange"><span class="filter-dot" style="background:#E67E22;"></span>60–89d</div>
+            <div class="filter-chip" data-filter="red"><span class="filter-dot" style="background:#E74C3C;"></span>90+d</div>
+            <div class="filter-chip" data-filter="novisit"><span class="filter-dot" style="background:#EAC435;border:1px solid #ccc;"></span>Ej besökt</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <h3>Behöver besökas</h3>
+          <div id="toplist"></div>
+        </div>
+
+        <!-- Manager: comparison stats -->
+        <div class="sidebar-section" data-role="manager" style="display:none;">
+          <h3>Jämförelse</h3>
+          <div id="comparisonTable"></div>
+        </div>
       </div>
     </div>
 
