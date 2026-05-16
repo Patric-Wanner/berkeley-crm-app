@@ -64,6 +64,12 @@ function syncHeaderOffset() {
   if (header && wrap) {
     wrap.style.paddingTop = header.offsetHeight + 'px';
   }
+
+  /* Block pull-to-refresh / overscroll on header (Safari needs this) */
+  if (!header._touchBlocked) {
+    header.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    header._touchBlocked = true;
+  }
 }
 
 /* ── Role-based UI visibility ───────────────────────── */

@@ -1201,9 +1201,20 @@ body.dark .sp-filter-select {
 
   /* ── Main layout ────────────────────────────────── */
 
+  html {
+    overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+
   body {
     height: 100dvh;
     overflow: hidden;
+    overscroll-behavior: none;
+    position: fixed;
+    width: 100%;
   }
 
   .main-wrap {
