@@ -295,6 +295,83 @@ body {
   margin-top: 2px;
 }
 
+.stat-box {
+  cursor: pointer;
+  transition: outline .15s;
+}
+
+.stat-box:hover {
+  outline: 2px solid var(--bd);
+  outline-offset: -2px;
+}
+
+.stat-box.active {
+  outline: 2px solid var(--bd);
+  outline-offset: -2px;
+}
+
+/* ── Stat detail panel ─────────────────────────────── */
+
+.stat-detail {
+  margin-top: 12px;
+  border-top: 1px solid var(--bb);
+  padding-top: 12px;
+}
+
+.stat-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.stat-detail-header h4 {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .3px;
+  color: var(--bd);
+  margin: 0;
+}
+
+.stat-detail .card-input {
+  margin-bottom: 8px;
+}
+
+.stat-detail-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.stat-detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--bb);
+  font-size: 12px;
+}
+
+.stat-detail-item:last-child {
+  border-bottom: none;
+}
+
+.stat-detail-name {
+  cursor: pointer;
+  color: var(--bd);
+  font-weight: 400;
+}
+
+.stat-detail-name:hover {
+  text-decoration: underline;
+}
+
+.stat-detail-meta {
+  font-size: 11px;
+  color: var(--bm);
+  white-space: nowrap;
+  margin-left: 10px;
+}
+
 /* ── Toplist ────────────────────────────────────────── */
 
 .toplist-item {
@@ -1037,6 +1114,19 @@ body.dark .sidebar {
 
 body.dark .stat-box {
   background: #2a2b2d;
+}
+
+body.dark .stat-box:hover,
+body.dark .stat-box.active {
+  outline-color: #f2f2f2;
+}
+
+body.dark .stat-detail-header h4 {
+  color: #f2f2f2;
+}
+
+body.dark .stat-detail-name {
+  color: #f2f2f2;
 }
 
 body.dark .legend {

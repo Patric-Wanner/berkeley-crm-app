@@ -143,6 +143,97 @@ function buildPopup(c, days, lastVisit) {
   </div>`;
 }
 
+/* ── Stat detail panel ─────────────────────────────── */
+function openStatDetail(stat, allCusts, needsVisitList, visitsThisMonthList) {
+  const panel = document.getElementById('statDetail');
+  const title = document.getElementById('statDetailTitle');
+  const listEl = document.getElementById('statDetailList');
+  const searchEl = document.getElementById('statDetailSearch');
+  const closeBtn = document.getElementById('statDetailClose');
+
+  let items = [];
+  let titleText = '';
+
+  if (stat === 'customers') {
+    titleText = `Alla kunder (${allCusts.length})`;
+    items = allCusts.map(c => {
+      const d = daysSince(lastVisitMap[c.id]);
+      const col = d === null ? '#EAC435' : visitColor(d);
+      const meta = d === null ? 'Ej besökt' : d + 'd sedan';
+      return { id: c.id, name: c.name, city: c.city, meta, col };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+
+  } else if (stat === 'visits') {
+    titleText = `Besök denna månad (${visitsThisMonthList.length})`;
+    items = visitsThisMonthList.map(v => {
+      const c = allCusts.find(x => x.id === v.customer_id);
+      return {
+        id: v.customer_id,
+        name: c ? c.name : 'Okänd',
+        city: c ? c.city : '',
+        meta: formatDate(v.visited_at),
+        col: '#2ECC71'
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+
+  } else if (stat === 'overdue') {
+    titleText = `Behöver besök (${needsVisitList.length})`;
+    items = needsVisitList.map(c => {
+      const d = daysSince(lastVisitMap[c.id]);
+      const col = d === null ? '#EAC435' : visitColor(d);
+      const meta = d === null ? 'Aldrig besökt' : d + ' dagar';
+      return { id: c.id, name: c.name, city: c.city, meta, col };
+    }).sort((a, b) => {
+      const da = daysSince(lastVisitMap[a.id]) ?? 9999;
+      const db = daysSince(lastVisitMap[b.id]) ?? 9999;
+      return db - da;
+    });
+
+  } else if (stat === 'people') {
+    if (hasRole('manager') && profiles.length) {
+      titleText = `Säljare (${profiles.filter(p => p.role === 'salesperson').length})`;
+      items = profiles.filter(p => p.role === 'salesperson').map(p => {
+        const custCount = allCusts.filter(c => c.assigned_to === p.id).length;
+        return { id: null, name: p.display_name, city: '', meta: custCount + ' kunder', col: null };
+      });
+    } else {
+      titleText = `Alla kunder (${allCusts.length})`;
+      items = allCusts.map(c => ({
+        id: c.id, name: c.name, city: c.city, meta: c.city, col: null
+      })).sort((a, b) => a.name.localeCompare(b.name, 'sv'));
+    }
+  }
+
+  title.textContent = titleText;
+  searchEl.value = '';
+  panel.style.display = 'block';
+
+  function renderList(filter) {
+    const q = (filter || '').toLowerCase();
+    const filtered = q
+      ? items.filter(i => i.name.toLowerCase().includes(q) || (i.city && i.city.toLowerCase().includes(q)))
+      : items;
+
+    listEl.innerHTML = filtered.map(i => `
+      <div class="stat-detail-item">
+        <span class="stat-detail-name" ${i.id ? `onclick="CRM.openCard('${i.id}')"` : ''}>${i.name}${i.city ? ` <span style="color:var(--bm);font-weight:300;">${i.city}</span>` : ''}</span>
+        <span class="stat-detail-meta"${i.col ? ` style="color:${i.col}"` : ''}>${i.meta}</span>
+      </div>
+    `).join('') || '<p style="font-size:12px;color:var(--bm);padding:8px 0;">Inga träffar</p>';
+  }
+
+  renderList();
+
+  /* Wire search */
+  searchEl.oninput = () => renderList(searchEl.value);
+
+  /* Wire close */
+  closeBtn.onclick = () => {
+    panel.style.display = 'none';
+    document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('active'));
+  };
+}
+
 /* ── Dashboard ──────────────────────────────────────── */
 function updateDashboard(allVisits) {
   const now = new Date();
@@ -155,12 +246,30 @@ function updateDashboard(allVisits) {
     return d !== null && d >= 90;
   }).length;
 
+  /* Prepare data sets for clickable stats */
+  const needsVisitList = customers.filter(c => {
+    const d = daysSince(lastVisitMap[c.id]);
+    return d === null || d >= 90;
+  });
+
+  const visitsThisMonthList = allVisits.filter(v => v.visited_at.startsWith(thisMonth));
+
   document.getElementById('statsGrid').innerHTML = `
-    <div class="stat-box"><div class="num">${customers.length}</div><div class="label">Kunder</div></div>
-    <div class="stat-box"><div class="num">${visitsThisMonth}</div><div class="label">Besök denna månad</div></div>
-    <div class="stat-box"><div class="num" style="color:#E74C3C;">${overdue90 + neverVisited}</div><div class="label">Behöver besök</div></div>
-    <div class="stat-box"><div class="num">${profiles.length || '—'}</div><div class="label">${hasRole('manager') ? 'Säljare' : 'Kunder'}</div></div>
+    <div class="stat-box" data-stat="customers"><div class="num">${customers.length}</div><div class="label">Kunder</div></div>
+    <div class="stat-box" data-stat="visits"><div class="num">${visitsThisMonth}</div><div class="label">Besök denna månad</div></div>
+    <div class="stat-box" data-stat="overdue"><div class="num" style="color:#E74C3C;">${needsVisitList.length}</div><div class="label">Behöver besök</div></div>
+    <div class="stat-box" data-stat="people"><div class="num">${profiles.length || '—'}</div><div class="label">${hasRole('manager') ? 'Säljare' : 'Kunder'}</div></div>
   `;
+
+  /* Make stat boxes clickable */
+  document.querySelectorAll('.stat-box[data-stat]').forEach(box => {
+    box.addEventListener('click', () => {
+      const stat = box.dataset.stat;
+      openStatDetail(stat, customers, needsVisitList, visitsThisMonthList);
+      document.querySelectorAll('.stat-box').forEach(b => b.classList.remove('active'));
+      box.classList.add('active');
+    });
+  });
 
   /* Toplist — least recently visited */
   const sorted = customers

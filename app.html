@@ -83,6 +83,15 @@
         <div class="sidebar-section">
           <h3>Översikt</h3>
           <div class="stat-grid" id="statsGrid"></div>
+          <!-- Expandable detail list -->
+          <div id="statDetail" class="stat-detail" style="display:none;">
+            <div class="stat-detail-header">
+              <h4 id="statDetailTitle"></h4>
+              <button class="filter-clear-btn" id="statDetailClose" title="Stäng">&#x2715;</button>
+            </div>
+            <input type="text" id="statDetailSearch" class="card-input" placeholder="Sök i listan...">
+            <div id="statDetailList" class="stat-detail-list"></div>
+          </div>
         </div>
 
         <div class="sidebar-section">
