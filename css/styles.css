@@ -1245,8 +1245,7 @@ body.dark .sp-filter-select {
     position: fixed;
     bottom: 0;
     left: 0;
-    top: auto;
-    max-height: calc(100vh - 96px); /* JS overrides with exact value */
+    top: 96px; /* JS overrides with exact header height */
     z-index: 10000;
     border-left: none;
     border-top: 1px solid var(--bb);
@@ -1256,7 +1255,8 @@ body.dark .sp-filter-select {
   }
 
   .sidebar.open {
-    display: block;
+    display: flex;
+    flex-direction: column;
   }
 
   .sidebar-header {

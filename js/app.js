@@ -65,9 +65,9 @@ function syncHeaderOffset() {
   if (header && wrap) {
     const h = header.offsetHeight;
     wrap.style.paddingTop = h + 'px';
-    /* Sidebar must not extend behind the header */
+    /* Sidebar starts right below the header */
     const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.style.maxHeight = (window.innerHeight - h - 8) + 'px';
+    if (sidebar) sidebar.style.top = h + 'px';
   }
 
   /* Block pull-to-refresh / overscroll on header (Safari needs this) */
@@ -532,6 +532,7 @@ function bindEvents() {
 
   /* Dashboard toggle */
   document.getElementById('dashBtn').addEventListener('click', () => {
+    syncHeaderOffset();
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('open');
     document.getElementById('dashBtn').classList.toggle('active');
