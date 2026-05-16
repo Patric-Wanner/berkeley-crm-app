@@ -252,11 +252,20 @@ function bindEvents() {
   });
 
   /* Sidebar close button (mobile) */
-  document.getElementById('sidebarCloseBtn').addEventListener('click', () => {
+  const closeSidebar = () => {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('dashBtn').classList.remove('active');
     invalidateSize();
+  };
+
+  document.getElementById('sidebarCloseBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeSidebar();
   });
+
+  /* Also close sidebar when tapping the backdrop */
+  document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
 
   /* Theme */
   document.getElementById('themeBtn').addEventListener('click', function () {

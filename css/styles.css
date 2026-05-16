@@ -1241,18 +1241,46 @@ body.dark .sp-filter-select {
 
   /* Close button visible on mobile */
   .sidebar-close-btn {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: none;
-    border: none;
-    font-size: 20px;
-    color: var(--bm);
+    border: 1px solid var(--bb);
+    font-size: 28px;
+    color: var(--bd);
     cursor: pointer;
-    padding: 4px 8px;
-    transition: color .2s;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+    z-index: 2;
+    transition: background .2s, color .2s;
   }
 
-  .sidebar-close-btn:hover {
+  .sidebar-close-btn:hover,
+  .sidebar-close-btn:active {
+    background: var(--bb);
     color: var(--bd);
+  }
+
+  /* Sidebar backdrop */
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .35);
+    z-index: 9999;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .sidebar.open ~ .sidebar-backdrop,
+  .sidebar-backdrop.open {
+    display: block;
   }
 
   /* Drag handle indicator */
@@ -1414,5 +1442,19 @@ body.dark .sp-filter-select {
 
   body.dark .sidebar-header {
     background: #1c1d1f;
+  }
+
+  body.dark .sidebar-close-btn {
+    color: var(--bl);
+    border-color: rgba(255, 255, 255, .15);
+  }
+
+  body.dark .sidebar-close-btn:active {
+    background: rgba(255, 255, 255, .1);
+  }
+
+  body.dark .sidebar-backdrop.open,
+  body.dark .sidebar.open ~ .sidebar-backdrop {
+    background: rgba(0, 0, 0, .55);
   }
 }
