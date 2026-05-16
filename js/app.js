@@ -280,7 +280,6 @@ function updatePlannedVisits() {
   if (!el) return;
   const today = new Date().toISOString().slice(0, 10);
 
-  /* Filter to visible customers */
   const customerIds = new Set(customers.map(c => c.id));
   const relevant = nextVisitsCache
     .filter(nv => customerIds.has(nv.customer_id))
@@ -291,7 +290,7 @@ function updatePlannedVisits() {
     return;
   }
 
-  el.innerHTML = relevant.slice(0, 15).map(nv => {
+  el.innerHTML = relevant.slice(0, 20).map(nv => {
     const c = customers.find(x => x.id === nv.customer_id);
     const name = c ? c.name : (nv.customers?.name || 'Okänd');
     const d = nv.scheduled_date;
@@ -300,8 +299,10 @@ function updatePlannedVisits() {
     else if (d === today) cls = 'today';
     const label = d === today ? 'Idag' : formatDate(d);
     return `<div class="planned-item">
-      <span class="toplist-name" onclick="CRM.openCard('${nv.customer_id}')">${name}</span>
+      <span class="toplist-name" onclick="CRM.openCard('${nv.customer_id}')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
+      <input type="date" class="planned-date-input" value="${d}" onchange="CRM.dashChangeNextVisit('${nv.customer_id}', this.value)" title="Ändra datum">
       <span class="planned-date ${cls}">${label}</span>
+      <button class="route-stop-remove" onclick="CRM.dashRemoveNextVisit('${nv.customer_id}')" title="Ta bort">&#x2715;</button>
     </div>`;
   }).join('');
 }
@@ -739,6 +740,20 @@ window.CRM = {
     try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
     updatePlannedVisits();
     await renderCard(customerId);
+  },
+
+  /* Dashboard: change/remove planned visit */
+  async dashChangeNextVisit(customerId, newDate) {
+    if (!newDate) return;
+    await setNextVisit(customerId, newDate);
+    try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
+    updatePlannedVisits();
+  },
+
+  async dashRemoveNextVisit(customerId) {
+    await removeNextVisit(customerId);
+    try { nextVisitsCache = await fetchNextVisits(); } catch { /* */ }
+    updatePlannedVisits();
   },
 
   /* Contacts */
