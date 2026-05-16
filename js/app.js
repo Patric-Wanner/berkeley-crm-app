@@ -401,10 +401,26 @@ async function buildRapport() {
     const names = salespeople.map(p => p.display_name);
     const visitCounts = salespeople.map(p => allVisitsCache.filter(v => v.user_id === p.id && v.visited_at.startsWith(thisMonth)).length);
 
+    const totalVisits = visitCounts.reduce((s, v) => s + v, 0);
+    const custCounts = salespeople.map(p => allCustomers.filter(c => c.assigned_to === p.id).length);
+
     chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
       type: 'bar',
       data: { labels: names, datasets: [{ label: 'Besök denna månad', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
-      options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+      options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: {
+        titleFont: { family: 'Raleway', size: 13, weight: 600 },
+        bodyFont: { family: 'Raleway', size: 12 },
+        padding: 12,
+        callbacks: {
+          title: ctx => ctx[0].label,
+          label: ctx => `Besök denna månad: ${ctx.raw}`,
+          afterLabel: ctx => {
+            const i = ctx.dataIndex;
+            const pct = totalVisits > 0 ? Math.round(ctx.raw / totalVisits * 100) : 0;
+            return `Antal kunder: ${custCounts[i]}\nAndel av totala besök: ${pct}%`;
+          }
+        }
+      } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
     });
   } else {
     const months = [], visitCounts = [], now = new Date();
@@ -417,7 +433,15 @@ async function buildRapport() {
     chartInstances.visits = new Chart(document.getElementById('chartVisits'), {
       type: 'bar',
       data: { labels: months, datasets: [{ label: 'Besök', data: visitCounts, backgroundColor: '#303336', borderRadius: 2 }] },
-      options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
+      options: { responsive: true, plugins: { legend: { display: false }, datalabels: { display: false }, tooltip: {
+        titleFont: { family: 'Raleway', size: 13, weight: 600 },
+        bodyFont: { family: 'Raleway', size: 12 },
+        padding: 12,
+        callbacks: {
+          title: ctx => ctx[0].label,
+          label: ctx => `Antal besök: ${ctx.raw}`
+        }
+      } }, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { display: false } } } }
     });
   }
 
@@ -565,7 +589,29 @@ function buildRevenueChart() {
       responsive: true,
       plugins: {
         legend: { display: showCompare, labels: { color: textColor, font: { family: 'Raleway', size: 11 } } },
-        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + formatSEK(ctx.raw) } },
+        tooltip: {
+          titleFont: { family: 'Raleway', size: 13, weight: 600 },
+          bodyFont: { family: 'Raleway', size: 12 },
+          padding: 12,
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => `${ctx.dataset.label}: ${formatSEK(ctx.raw)}`,
+            afterBody: ctx => {
+              const total = ctx[0].dataset.data.reduce((s, v) => s + v, 0);
+              const pct = total > 0 ? Math.round(ctx[0].raw / total * 100) : 0;
+              const i = ctx[0].dataIndex;
+              const lines = [`Andel av total: ${pct}%`];
+              if (isManager && profiles.length) {
+                const sp = profiles.filter(p => p.role === 'salesperson')[i];
+                if (sp) {
+                  const custCount = allCustomers.filter(c => c.assigned_to === sp.id).length;
+                  lines.push(`Antal kunder: ${custCount}`);
+                }
+              }
+              return lines.join('\n');
+            }
+          }
+        },
         datalabels: {
           anchor: 'end',
           align: 'end',
