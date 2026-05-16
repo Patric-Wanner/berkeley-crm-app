@@ -1132,10 +1132,16 @@ body.dark .sp-filter-select {
   /* ── Header: two-row mobile layout ──────────────── */
 
   .header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     flex-wrap: wrap;
     padding: 8px 10px;
     gap: 6px;
     z-index: 10001;
+    touch-action: none;
+    overscroll-behavior: none;
   }
 
   .header-logo {
@@ -1195,9 +1201,19 @@ body.dark .sp-filter-select {
 
   /* ── Main layout ────────────────────────────────── */
 
+  body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   .main-wrap {
     flex-direction: column;
-    position: relative;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-top: 88px; /* space for fixed header */
   }
 
   .map-container {

@@ -50,6 +50,20 @@ async function init() {
 
   /* Event bindings */
   bindEvents();
+
+  /* Sync fixed-header offset on mobile */
+  syncHeaderOffset();
+  window.addEventListener('resize', syncHeaderOffset);
+}
+
+/* ── Mobile: sync main-wrap padding to header height ── */
+function syncHeaderOffset() {
+  if (window.innerWidth > 768) return;
+  const header = document.querySelector('.header');
+  const wrap = document.querySelector('.main-wrap');
+  if (header && wrap) {
+    wrap.style.paddingTop = header.offsetHeight + 'px';
+  }
 }
 
 /* ── Role-based UI visibility ───────────────────────── */
