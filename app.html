@@ -215,18 +215,28 @@
       <input id="ecName" type="text">
       <label>Kundnummer</label>
       <input id="ecNr" type="text">
+      <label>Org.nr</label>
+      <input id="ecOrgNr" type="text" placeholder="XXXXXX-XXXX">
       <label>Adress</label>
       <input id="ecAddress" type="text">
       <label>Postnummer</label>
       <input id="ecZip" type="text">
       <label>Ort *</label>
       <input id="ecCity" type="text">
+      <label>Telefon</label>
+      <input id="ecPhone" type="tel" placeholder="0XX-XXX XX XX">
+      <label>E-post</label>
+      <input id="ecEmail" type="email" placeholder="info@företag.se">
+      <label>Webbplats</label>
+      <input id="ecWebsite" type="text" placeholder="www.företag.se">
       <label>Status</label>
       <select id="ecStatus">
         <option value="active">Aktiv</option>
         <option value="prospect">Prospekt</option>
         <option value="inactive">Inaktiv</option>
       </select>
+      <label>Anteckningar</label>
+      <textarea id="ecNotes" rows="3" style="width:100%;font-family:'Raleway',sans-serif;font-size:13px;border:1px solid var(--bb);background:var(--bg);color:var(--bd);padding:8px;resize:vertical;border-radius:0;" placeholder="Intern info om kunden..."></textarea>
       <label data-role="admin" style="display:none;">Tilldela säljare</label>
       <select id="ecAssign" data-role="admin" style="display:none;"></select>
       <p id="ecError" style="color:#c0392b;font-size:12px;display:none;"></p>

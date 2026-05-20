@@ -26,13 +26,13 @@ export async function fetchAllVisits(userId) {
 }
 
 /* Register a visit */
-export async function registerVisit(customerId, userId, comment) {
+export async function registerVisit(customerId, userId, comment, visitedAt) {
   const { data, error } = await sb
     .from('visits')
     .insert({
       customer_id: customerId,
       user_id: userId,
-      visited_at: new Date().toISOString(),
+      visited_at: visitedAt || new Date().toISOString(),
       comment: comment || null
     })
     .select()

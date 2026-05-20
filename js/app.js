@@ -122,9 +122,7 @@ async function refreshAll(filterUserId) {
 
 /* ── Popup builder ──────────────────────────────────── */
 function buildPopup(c, days, lastVisit) {
-  const profile = getProfile();
-  const isOwner = c.assigned_to === profile.id;
-  const canEdit = isOwner || hasRole('admin');
+  const today = new Date().toISOString().slice(0, 10);
 
   let statusText = '<span style="color:#EAC435;font-weight:500;">Ej besökt</span>';
   if (days !== null) {
@@ -147,11 +145,13 @@ function buildPopup(c, days, lastVisit) {
     <a href="${googleMapsUrl(c)}" target="_blank" class="gmaps-link">&#x2197; Öppna i Google Maps</a>
     <hr class="popup-hr">
     <p style="font-size:12px;">Senaste besök: ${statusText}</p>
-    ${canEdit ? `
     <div style="margin-top:6px;">
       <input id="vc_${c.id}" type="text" placeholder="Kommentar (valfritt)" class="popup-input" style="margin-bottom:4px;">
-      <button onclick="CRM.registerVisit('${c.id}')" class="popup-btn">Registrera besök</button>
-    </div>` : ''}
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input id="vd_${c.id}" type="date" value="${today}" class="popup-input" style="flex:1;font-size:11px;">
+        <button onclick="CRM.registerVisit('${c.id}')" class="popup-btn" style="flex:1;">Registrera besök</button>
+      </div>
+    </div>
     <hr class="popup-hr">
     <div style="display:flex;gap:6px;">
       <button onclick="CRM.openCard('${c.id}')" class="popup-btn" style="flex:1;">Kundkort</button>
@@ -651,9 +651,7 @@ async function renderCard(customerId) {
   const c = allCustomers.find(x => x.id === customerId) || customers.find(x => x.id === customerId);
   if (!c) return;
 
-  const profile = getProfile();
-  const isOwner = c.assigned_to === profile.id;
-  const canEdit = isOwner || hasRole('admin');
+  const today = new Date().toISOString().slice(0, 10);
 
   const [visits, contacts, comments, revenue, todos] = await Promise.all([
     fetchVisits(customerId), fetchContacts(customerId), fetchComments(customerId), fetchRevenue(customerId),
@@ -677,13 +675,21 @@ async function renderCard(customerId) {
           <span class="card-status-badge ${statusClass}">${statusLabels[c.status] || 'Aktiv'}</span>
         </div>
         <p class="card-subtitle">Kundnr: ${c.customer_nr}</p>
+        ${c.org_nr ? `<p class="card-subtitle">Org.nr: ${c.org_nr}</p>` : ''}
         <p class="card-subtitle">${c.address || ''}</p>
         <p class="card-subtitle">${c.zip || ''} ${c.city}</p>
+        ${c.phone ? `<p class="card-subtitle"><a href="tel:${c.phone}" style="color:var(--bd);text-decoration:none;">📞 ${c.phone}</a></p>` : ''}
+        ${c.email ? `<p class="card-subtitle"><a href="mailto:${c.email}" style="color:var(--bd);text-decoration:none;">✉ ${c.email}</a></p>` : ''}
+        ${c.website ? `<p class="card-subtitle"><a href="${c.website.startsWith('http') ? c.website : 'https://' + c.website}" target="_blank" style="color:var(--bd);text-decoration:none;">🌐 ${c.website}</a></p>` : ''}
         ${spName ? `<p class="card-subtitle">Säljare: ${spName}</p>` : ''}
-        <a href="${googleMapsUrl(c)}" target="_blank" class="card-link">&#x2197; Google Maps</a>
-        ${canEdit ? `<button class="card-add-btn" style="margin-top:8px;margin-left:8px;" onclick="CRM.openEditCustomer('${c.id}')">Redigera</button>` : ''}
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <a href="${googleMapsUrl(c)}" target="_blank" class="card-link">&#x2197; Google Maps</a>
+          <button class="card-add-btn" onclick="CRM.openEditCustomer('${c.id}')">Redigera</button>
+        </div>
       </div>
     </div>
+
+    ${c.notes ? `<div class="card-section" style="padding-bottom:10px;"><p style="font-size:12px;color:var(--bm);font-style:italic;white-space:pre-wrap;">${c.notes}</p></div>` : ''}
 
     <div class="card-stats">
       <div class="card-stat"><div class="card-stat-num" style="color:${col};">${days === null ? '—' : days + 'd'}</div><div class="card-stat-label">Sedan besök</div></div>
@@ -692,12 +698,14 @@ async function renderCard(customerId) {
       <div class="card-stat"><div class="card-stat-num">${revTotal ? formatSEK(revTotal) : '—'}</div><div class="card-stat-label">Omsättning</div></div>
     </div>
 
-    ${canEdit ? `
     <div class="card-section">
       <div class="card-section-header"><h3>Registrera besök</h3></div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <input id="cardVisitComment" class="card-input" placeholder="Kommentar (valfritt)" style="flex:1;">
-        <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')">Registrera</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <input id="cardVisitDate" type="date" class="card-input" value="${today}" style="width:140px;">
+        <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')">Registrera besök</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--bm);white-space:nowrap;margin:0;">Nästa besök:</label>
@@ -705,23 +713,20 @@ async function renderCard(customerId) {
         <button class="card-add-btn" onclick="CRM.cardSetNextVisit('${c.id}')" style="white-space:nowrap;">${nvDate ? 'Uppdatera' : 'Planera'}</button>
         ${nvDate ? `<button class="route-stop-remove" onclick="CRM.cardRemoveNextVisit('${c.id}')" title="Ta bort">&#x2715;</button>` : ''}
       </div>
-    </div>` : ''}
+    </div>
 
     <!-- Todos -->
     <div class="card-section">
-      <div class="card-section-header">
-        <h3>Att göra</h3>
-      </div>
-      ${canEdit ? `
+      <div class="card-section-header"><h3>Att göra</h3></div>
       <div style="display:flex;gap:8px;margin-bottom:8px;">
         <input id="cardTodoText" class="card-input" placeholder="Ny uppgift..." style="flex:1;">
         <button class="card-action-btn" onclick="CRM.cardAddTodo('${c.id}')">Lägg till</button>
-      </div>` : ''}
+      </div>
       ${todos.length ? todos.map(t => `
         <div class="todo-item ${t.done ? 'done' : ''}">
           <input type="checkbox" ${t.done ? 'checked' : ''} onchange="CRM.cardToggleTodo('${t.id}', this.checked, '${c.id}')">
           <span class="todo-text">${t.text}</span>
-          ${canEdit ? `<button class="route-stop-remove" onclick="CRM.cardDeleteTodo('${t.id}','${c.id}')">&#x2715;</button>` : ''}
+          <button class="route-stop-remove" onclick="CRM.cardDeleteTodo('${t.id}','${c.id}')">&#x2715;</button>
         </div>
       `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga uppgifter</p>'}
     </div>
@@ -731,13 +736,13 @@ async function renderCard(customerId) {
       ${visits.length ? visits.slice(0, 20).map(v => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bb);">
           <div><span style="font-size:12px;font-weight:500;">${formatDate(v.visited_at)}</span>${v.comment ? `<span style="font-size:11px;color:var(--bm);margin-left:8px;">${v.comment}</span>` : ''}</div>
-          ${canEdit ? `<button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
+          <button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>
         </div>
       `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga besök registrerade</p>'}
     </div>
 
     <div class="card-section">
-      <div class="card-section-header"><h3>Kontakter</h3>${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddContact()">+ Lägg till</button>` : ''}</div>
+      <div class="card-section-header"><h3>Kontakter</h3><button class="card-add-btn" onclick="CRM.toggleAddContact()">+ Lägg till</button></div>
       <div id="addContactForm" style="display:none;margin-bottom:10px;">
         <input id="contactName" class="card-input" placeholder="Namn" style="margin-bottom:4px;">
         <input id="contactRole" class="card-input" placeholder="Roll/Titel" style="margin-bottom:4px;">
@@ -749,7 +754,7 @@ async function renderCard(customerId) {
         <div style="padding:8px 0;border-bottom:1px solid var(--bb);">
           <div style="display:flex;justify-content:space-between;align-items:start;">
             <div><span style="font-size:13px;font-weight:500;">${ct.name || ct.person_name}</span>${ct.is_primary ? '<span style="font-size:9px;background:var(--bd);color:var(--bl);padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px;">Primär</span>' : ''}${ct.role ? `<p style="font-size:11px;color:var(--bm);margin-top:2px;">${ct.role}</p>` : ''}</div>
-            ${canEdit ? `<button onclick="CRM.cardDeleteContact('${ct.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}
+            <button onclick="CRM.cardDeleteContact('${ct.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>
           </div>
           <div style="margin-top:4px;font-size:12px;">${ct.phone ? `<a href="tel:${ct.phone}" style="color:var(--bd);text-decoration:none;margin-right:12px;">${ct.phone}</a>` : ''}${ct.email ? `<a href="mailto:${ct.email}" style="color:var(--bd);text-decoration:none;">${ct.email}</a>` : ''}</div>
         </div>
@@ -758,24 +763,24 @@ async function renderCard(customerId) {
 
     <div class="card-section">
       <div class="card-section-header"><h3>Kommentarer</h3></div>
-      ${canEdit ? `<div style="display:flex;gap:8px;margin-bottom:10px;"><input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;"><button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button></div>` : ''}
+      <div style="display:flex;gap:8px;margin-bottom:10px;"><input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;"><button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button></div>
       ${comments.length ? comments.map(cm => `
         <div style="padding:6px 0;border-bottom:1px solid var(--bb);">
-          <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;">${cm.body || cm.text}</span>${canEdit ? `<button onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>` : ''}</div>
+          <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;">${cm.body || cm.text}</span><button onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button></div>
           <p style="font-size:10px;color:var(--bm);margin-top:2px;">${formatDate(cm.created_at)}</p>
         </div>
       `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kommentarer</p>'}
     </div>
 
     <div class="card-section">
-      <div class="card-section-header"><h3>Omsättning</h3>${canEdit ? `<button class="card-add-btn" onclick="CRM.toggleAddRevenue()">+ Lägg till</button>` : ''}</div>
+      <div class="card-section-header"><h3>Omsättning</h3><button class="card-add-btn" onclick="CRM.toggleAddRevenue()">+ Lägg till</button></div>
       <div id="addRevenueForm" style="display:none;margin-bottom:10px;">
         <div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="revYear" class="card-input" type="number" placeholder="År" value="${new Date().getFullYear()}" style="width:70px;"><select id="revMonth" class="card-input" style="width:100px;"><option value="">Helår</option><option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">Maj</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option><option value="10">Okt</option><option value="11">Nov</option><option value="12">Dec</option></select><input id="revAmount" class="card-input" type="number" placeholder="Belopp (SEK)" style="flex:1;min-width:100px;"><button class="card-action-btn" onclick="CRM.cardAddRevenue('${c.id}')">Spara</button></div>
       </div>
-      ${revenue.length ? (() => { const mNames = ['','Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec']; return `<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;"><td style="padding:4px 0;">Period</td><td style="text-align:right;padding:4px 0;">Belopp</td>${canEdit ? '<td></td>' : ''}</tr>${revenue.map(r => `<tr style="border-bottom:1px solid var(--bb);"><td style="padding:6px 0;">${r.month ? mNames[r.month] + ' ' : ''}${r.year}</td><td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>${canEdit ? `<td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>` : ''}</tr>`).join('')}</table>`; })() : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
+      ${revenue.length ? (() => { const mNames = ['','Jan','Feb','Mar','Apr','Maj','Jun','Jul','Aug','Sep','Okt','Nov','Dec']; return `<table style="width:100%;font-size:12px;border-collapse:collapse;"><tr style="color:var(--bm);font-size:10px;text-transform:uppercase;letter-spacing:.5px;"><td style="padding:4px 0;">Period</td><td style="text-align:right;padding:4px 0;">Belopp</td><td></td></tr>${revenue.map(r => `<tr style="border-bottom:1px solid var(--bb);"><td style="padding:6px 0;">${r.month ? mNames[r.month] + ' ' : ''}${r.year}</td><td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td><td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td></tr>`).join('')}</table>`; })() : '<p style="font-size:12px;color:var(--bm);">Ingen omsättning registrerad</p>'}
     </div>
 
-    ${hasRole('admin') ? `<div class="card-section" style="border-bottom:none;"><button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button></div>` : ''}
+    <div class="card-section" style="border-bottom:none;"><button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button></div>
   `;
 
   document.getElementById('cardContent').innerHTML = html;
@@ -834,7 +839,9 @@ function renderReassignList() {
 window.CRM = {
   async registerVisit(customerId) {
     const input = document.getElementById('vc_' + customerId);
-    await registerVisit(customerId, getProfile().id, input ? input.value.trim() : '');
+    const dateInput = document.getElementById('vd_' + customerId);
+    const visitDate = dateInput?.value ? new Date(dateInput.value).toISOString() : null;
+    await registerVisit(customerId, getProfile().id, input ? input.value.trim() : '', visitDate);
     await refreshAll();
   },
 
@@ -850,7 +857,7 @@ window.CRM = {
 
   closeCard() { document.getElementById('customerCard').classList.remove('open'); document.getElementById('cardOverlay').classList.remove('open'); },
 
-  async cardRegisterVisit(cid) { const i = document.getElementById('cardVisitComment'); await registerVisit(cid, getProfile().id, i ? i.value.trim() : ''); await refreshAll(); await renderCard(cid); },
+  async cardRegisterVisit(cid) { const i = document.getElementById('cardVisitComment'); const d = document.getElementById('cardVisitDate')?.value; const visitDate = d ? new Date(d).toISOString() : null; await registerVisit(cid, getProfile().id, i ? i.value.trim() : '', visitDate); await refreshAll(); await renderCard(cid); },
   async cardDeleteVisit(vid, cid) { await deleteVisit(vid); await refreshAll(); await renderCard(cid); },
   async cardSetNextVisit(cid) { const d = document.getElementById('cardNextVisit')?.value; if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
   async cardRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
@@ -906,10 +913,15 @@ window.CRM = {
     document.getElementById('ecId').value = c.id;
     document.getElementById('ecName').value = c.name;
     document.getElementById('ecNr').value = c.customer_nr || '';
+    document.getElementById('ecOrgNr').value = c.org_nr || '';
     document.getElementById('ecAddress').value = c.address || '';
     document.getElementById('ecZip').value = c.zip || '';
     document.getElementById('ecCity').value = c.city || '';
+    document.getElementById('ecPhone').value = c.phone || '';
+    document.getElementById('ecEmail').value = c.email || '';
+    document.getElementById('ecWebsite').value = c.website || '';
     document.getElementById('ecStatus').value = c.status || 'active';
+    document.getElementById('ecNotes').value = c.notes || '';
     document.getElementById('ecError').style.display = 'none';
     if (hasRole('admin') && profiles.length) {
       document.getElementById('ecAssign').innerHTML = profiles.map(p => `<option value="${p.id}" ${p.id === c.assigned_to ? 'selected' : ''}>${p.display_name}</option>`).join('');
@@ -931,7 +943,7 @@ window.CRM = {
       const coords = await geocodeAddress([address, zip, city].filter(Boolean).join(', '));
       if (coords) { lat = coords.lat; lng = coords.lng; }
     }
-    const updates = { name, customer_nr: document.getElementById('ecNr').value.trim(), address, zip, city, status: document.getElementById('ecStatus').value, lat, lng };
+    const updates = { name, customer_nr: document.getElementById('ecNr').value.trim(), org_nr: document.getElementById('ecOrgNr').value.trim(), address, zip, city, phone: document.getElementById('ecPhone').value.trim(), email: document.getElementById('ecEmail').value.trim(), website: document.getElementById('ecWebsite').value.trim(), status: document.getElementById('ecStatus').value, notes: document.getElementById('ecNotes').value.trim(), lat, lng };
     if (hasRole('admin')) updates.assigned_to = document.getElementById('ecAssign').value;
     try { await updateCustomer(id, updates); CRM.closeEditCustomer(); await refreshAll(); await renderCard(id); }
     catch (e) { err.textContent = 'Kunde inte spara: ' + (e.message || e); err.style.display = 'block'; }
