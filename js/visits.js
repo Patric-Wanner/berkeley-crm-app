@@ -26,15 +26,18 @@ export async function fetchAllVisits(userId) {
 }
 
 /* Register a visit */
-export async function registerVisit(customerId, userId, comment, visitedAt) {
+export async function registerVisit(customerId, userId, comment, visitedAt, visitType, contactPerson) {
+  const row = {
+    customer_id: customerId,
+    user_id: userId,
+    visited_at: visitedAt || new Date().toISOString(),
+    comment: comment || null
+  };
+  if (visitType) row.visit_type = visitType;
+  if (contactPerson) row.contact_person = contactPerson;
   const { data, error } = await sb
     .from('visits')
-    .insert({
-      customer_id: customerId,
-      user_id: userId,
-      visited_at: visitedAt || new Date().toISOString(),
-      comment: comment || null
-    })
+    .insert(row)
     .select()
     .single();
   if (error) throw error;

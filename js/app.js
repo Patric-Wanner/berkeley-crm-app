@@ -700,12 +700,21 @@ async function renderCard(customerId) {
 
     <div class="card-section">
       <div class="card-section-header"><h3>Registrera besök</h3></div>
-      <div style="display:flex;gap:8px;margin-bottom:8px;">
-        <input id="cardVisitComment" class="card-input" placeholder="Kommentar (valfritt)" style="flex:1;">
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
         <input id="cardVisitDate" type="date" class="card-input" value="${today}" style="width:140px;">
-        <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')">Registrera besök</button>
+        <select id="cardVisitType" class="card-input" style="width:120px;">
+          <option value="physical">Fysiskt besök</option>
+          <option value="phone">Telefon</option>
+          <option value="video">Teams/Video</option>
+          <option value="email">E-post</option>
+        </select>
+        <input id="cardVisitContact" class="card-input" placeholder="Kontaktperson" style="flex:1;min-width:120px;">
+      </div>
+      <div style="margin-bottom:8px;">
+        <textarea id="cardVisitComment" class="card-input" placeholder="Anteckningar — vad diskuterades, resultat, nästa steg..." rows="3" style="width:100%;resize:vertical;font-family:'Raleway',sans-serif;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')" style="flex:none;">Registrera besök</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--bm);white-space:nowrap;margin:0;">Nästa besök:</label>
@@ -733,12 +742,23 @@ async function renderCard(customerId) {
 
     <div class="card-section">
       <div class="card-section-header"><h3>Besökshistorik</h3></div>
-      ${visits.length ? visits.slice(0, 20).map(v => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--bb);">
-          <div><span style="font-size:12px;font-weight:500;">${formatDate(v.visited_at)}</span>${v.comment ? `<span style="font-size:11px;color:var(--bm);margin-left:8px;">${v.comment}</span>` : ''}</div>
-          <button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>
-        </div>
-      `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga besök registrerade</p>'}
+      ${visits.length ? visits.slice(0, 20).map(v => {
+        const typeLabels = { physical: '📍 Fysiskt', phone: '📞 Telefon', video: '💻 Teams/Video', email: '✉ E-post' };
+        const typeLabel = typeLabels[v.visit_type] || typeLabels.physical;
+        return `<div style="padding:8px 0;border-bottom:1px solid var(--bb);">
+          <div style="display:flex;justify-content:space-between;align-items:start;">
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:12px;font-weight:500;">${formatDate(v.visited_at)}</span>
+                <span style="font-size:10px;color:var(--bm);background:var(--bb);padding:1px 6px;">${typeLabel}</span>
+                ${v.contact_person ? `<span style="font-size:10px;color:var(--bm);">👤 ${v.contact_person}</span>` : ''}
+              </div>
+              ${v.comment ? `<p style="font-size:11px;color:var(--bm);margin-top:4px;white-space:pre-wrap;">${v.comment}</p>` : ''}
+            </div>
+            <button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;flex:none;">Ta bort</button>
+          </div>
+        </div>`;
+      }).join('') : '<p style="font-size:12px;color:var(--bm);">Inga besök registrerade</p>'}
     </div>
 
     <div class="card-section">
@@ -857,7 +877,15 @@ window.CRM = {
 
   closeCard() { document.getElementById('customerCard').classList.remove('open'); document.getElementById('cardOverlay').classList.remove('open'); },
 
-  async cardRegisterVisit(cid) { const i = document.getElementById('cardVisitComment'); const d = document.getElementById('cardVisitDate')?.value; const visitDate = d ? new Date(d).toISOString() : null; await registerVisit(cid, getProfile().id, i ? i.value.trim() : '', visitDate); await refreshAll(); await renderCard(cid); },
+  async cardRegisterVisit(cid) {
+    const comment = document.getElementById('cardVisitComment')?.value.trim() || '';
+    const d = document.getElementById('cardVisitDate')?.value;
+    const visitDate = d ? new Date(d).toISOString() : null;
+    const visitType = document.getElementById('cardVisitType')?.value || 'physical';
+    const contactPerson = document.getElementById('cardVisitContact')?.value.trim() || '';
+    await registerVisit(cid, getProfile().id, comment, visitDate, visitType, contactPerson);
+    await refreshAll(); await renderCard(cid);
+  },
   async cardDeleteVisit(vid, cid) { await deleteVisit(vid); await refreshAll(); await renderCard(cid); },
   async cardSetNextVisit(cid) { const d = document.getElementById('cardNextVisit')?.value; if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
   async cardRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
