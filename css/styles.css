@@ -2189,13 +2189,15 @@ body.dark .route-search-item:hover {
   /* ── Sidebar: slide-up overlay ──────────────────── */
 
   .sidebar {
-    width: 100%;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
     position: fixed;
     top: 0;
     left: 0;
     height: 100vh;
     z-index: 10002;
-    border-left: none;
+    border: none;
     border-radius: 0;
     box-shadow: none;
     overflow: hidden;
