@@ -182,20 +182,30 @@ body {
 }
 
 .sidebar-resize-handle {
-  width: 4px;
-  cursor: col-resize;
+  width: 0;
+  position: relative;
   flex-shrink: 0;
   display: none;
-  background: transparent;
+  z-index: 5;
 }
 
 .sidebar-resize-handle.visible {
   display: block;
 }
 
-.sidebar-resize-handle:hover,
-.sidebar-resize-handle.dragging {
-  background: rgba(255,255,255,.15);
+.sidebar-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.sidebar-resize-handle:hover::after,
+.sidebar-resize-handle.dragging::after {
+  background: rgba(255,255,255,.12);
 }
 
 .sidebar.open {
