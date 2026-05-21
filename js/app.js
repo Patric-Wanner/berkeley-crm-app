@@ -13,7 +13,7 @@ import { upsertRevenue, deleteRevenue, fetchRevenue, fetchAllRevenue } from './r
 import { fetchContacts, addContact, updateContact, deleteContact } from './contacts.js';
 import { fetchNextVisits, setNextVisit, removeNextVisit } from './next-visits.js';
 import { fetchTodos, addTodo, toggleTodo, deleteTodo } from './todos.js';
-import { daysSince, formatDate, formatSEK, visitColor, googleMapsUrl, geocodeAddress, haversine } from './helpers.js';
+import { daysSince, formatDate, formatSEK, visitColor, googleMapsUrl, geocodeAddress, haversine, downloadICS } from './helpers.js';
 import { HQ, MAP_CENTER, MAP_ZOOM } from './config.js';
 import { initMap, buildMarkers, setFilter, flyTo, search, resetView, invalidateSize, getMapInstance, toggleTheme } from './map.js';
 
@@ -285,9 +285,11 @@ function updatePlannedVisits() {
     const c = customers.find(x => x.id === nv.customer_id);
     const name = c ? c.name : (nv.customers?.name || 'Okänd');
     const d = nv.scheduled_date;
+    const loc = c ? [c.address, c.zip, c.city].filter(Boolean).join(', ') : '';
     return `<div class="planned-item">
       <span class="toplist-name" onclick="CRM.openCard('${nv.customer_id}')" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</span>
       <input type="date" class="planned-date-input" value="${d}" onchange="CRM.dashChangeNextVisit('${nv.customer_id}', this.value)" title="Ändra datum">
+      <button class="ics-btn" onclick="CRM.downloadPlannedICS('${nv.customer_id}')" title="Lägg till i Outlook">📅</button>
       <button class="route-stop-remove" onclick="CRM.dashRemoveNextVisit('${nv.customer_id}')" title="Ta bort">&#x2715;</button>
     </div>`;
   }).join('');
@@ -720,6 +722,7 @@ async function renderCard(customerId) {
         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--bm);white-space:nowrap;margin:0;">Nästa besök:</label>
         <input id="cardNextVisit" type="date" class="card-input" value="${nvDate}" style="flex:1;">
         <button class="card-add-btn" onclick="CRM.cardSetNextVisit('${c.id}')" style="white-space:nowrap;">${nvDate ? 'Uppdatera' : 'Planera'}</button>
+        ${nvDate ? `<button class="ics-btn" onclick="CRM.downloadNextVisitICS('${c.id}')" title="Lägg till i Outlook">📅</button>` : ''}
         ${nvDate ? `<button class="route-stop-remove" onclick="CRM.cardRemoveNextVisit('${c.id}')" title="Ta bort">&#x2715;</button>` : ''}
       </div>
     </div>
@@ -891,6 +894,34 @@ window.CRM = {
   async cardRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
   async dashChangeNextVisit(cid, d) { if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); },
   async dashRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); },
+
+  /* Calendar ICS */
+  downloadPlannedICS(cid) {
+    const c = allCustomers.find(x => x.id === cid);
+    const nv = nextVisitsCache.find(n => n.customer_id === cid);
+    if (!c || !nv) return;
+    const d = new Date(nv.scheduled_date + 'T09:00:00');
+    downloadICS({
+      title: `Kundbesök: ${c.name}`,
+      date: d,
+      duration: 60,
+      location: [c.address, c.zip, c.city].filter(Boolean).join(', '),
+      description: `Planerat besök hos ${c.name}\\nKundnr: ${c.customer_nr}\\nOrt: ${c.city}`
+    });
+  },
+  downloadNextVisitICS(cid) {
+    const c = allCustomers.find(x => x.id === cid);
+    const nvDate = document.getElementById('cardNextVisit')?.value;
+    if (!c || !nvDate) return;
+    const d = new Date(nvDate + 'T09:00:00');
+    downloadICS({
+      title: `Kundbesök: ${c.name}`,
+      date: d,
+      duration: 60,
+      location: [c.address, c.zip, c.city].filter(Boolean).join(', '),
+      description: `Planerat besök hos ${c.name}\\nKundnr: ${c.customer_nr}\\nOrt: ${c.city}`
+    });
+  },
 
   /* Todos */
   async cardAddTodo(cid) { const i = document.getElementById('cardTodoText'); const t = i?.value.trim(); if (!t) return; await addTodo(cid, getProfile().id, t); await renderCard(cid); },

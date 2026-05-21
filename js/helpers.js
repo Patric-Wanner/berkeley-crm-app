@@ -62,6 +62,37 @@ export function googleMapsUrl(customer) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.city)}`;
 }
 
+export function downloadICS({ title, date, duration = 60, location, description }) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const d = new Date(date);
+  const start = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  const end = new Date(d.getTime() + duration * 60000);
+  const endStr = `${end.getFullYear()}${pad(end.getMonth()+1)}${pad(end.getDate())}T${pad(end.getHours())}${pad(end.getMinutes())}00`;
+  const uid = crypto.randomUUID ? crypto.randomUUID() : Date.now() + '@berkeleycrm';
+  const esc = (s) => (s || '').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Berkeley CRM//SV',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTART:${start}`,
+    `DTEND:${endStr}`,
+    `SUMMARY:${esc(title)}`,
+    location ? `LOCATION:${esc(location)}` : '',
+    description ? `DESCRIPTION:${esc(description)}` : '',
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ].filter(Boolean).join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = title.replace(/[^a-zA-ZåäöÅÄÖ0-9 ]/g, '').replace(/\s+/g, '_') + '.ics';
+  a.click();
+}
+
 export async function geocodeAddress(query) {
   const queries = [
     query + ', Sweden',

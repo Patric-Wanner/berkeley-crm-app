@@ -1294,6 +1294,20 @@ body.dark .leaflet-tooltip-top:before {
   padding: 2px 6px;
 }
 
+.ics-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  opacity: .7;
+  transition: opacity .15s;
+}
+
+.ics-btn:hover {
+  opacity: 1;
+}
+
 .route-search-item {
   padding: 6px 8px;
   cursor: pointer;
