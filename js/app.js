@@ -1122,6 +1122,12 @@ function bindEvents() {
   document.getElementById('routeSearch')?.addEventListener('input', e => renderRouteSearch(e.target.value));
   document.getElementById('adminBtn').addEventListener('click', () => CRM.openAdmin());
   document.getElementById('rapportBtn').addEventListener('click', () => CRM.openRapport());
+  document.getElementById('rapportBtnManager')?.addEventListener('click', () => CRM.openRapport());
+  /* Hide the lower rapport button for managers (they have it under overview) */
+  if (hasRole('manager')) {
+    const section = document.getElementById('rapportBtnSection');
+    if (section) section.style.display = 'none';
+  }
   document.getElementById('changePwBtn').addEventListener('click', () => CRM.openChangePw());
   document.getElementById('changePwSave').addEventListener('click', () => CRM.saveChangePw());
 
