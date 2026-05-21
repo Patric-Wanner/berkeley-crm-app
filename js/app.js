@@ -775,6 +775,8 @@ async function renderCard(customerId) {
           </div>
         `).join('') : '<p class="card-empty-text">Inga kommentarer</p>'}
       </div>
+
+      <div style="padding:16px 0;"><button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button></div>
     </div>
   `;
 
@@ -884,9 +886,7 @@ async function renderCard(customerId) {
   `;
 
   /* ── Assemble ────────────────────────────────────── */
-  const html = overviewHtml + visitsHtml + contactsHtml + economyHtml + `
-    <div style="padding:16px 0;"><button class="popup-btn-danger" onclick="CRM.cardDeleteCustomer('${c.id}')">Ta bort kund</button></div>
-  `;
+  const html = overviewHtml + visitsHtml + contactsHtml + economyHtml;
 
   document.getElementById('cardContent').innerHTML = html;
 
