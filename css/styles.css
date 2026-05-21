@@ -844,8 +844,10 @@ body.dark .leaflet-tooltip-top:before {
 
 .customer-card-panel {
   position: fixed;
-  top: 0; right: -560px;
-  width: 540px;
+  top: 0; right: -100%;
+  width: 700px;
+  min-width: 400px;
+  max-width: 90vw;
   height: 100vh;
   background: var(--bw);
   z-index: 10002;
@@ -853,6 +855,24 @@ body.dark .leaflet-tooltip-top:before {
   transition: right .3s ease;
   display: flex;
   flex-direction: column;
+}
+
+.card-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10003;
+  background: transparent;
+  transition: background .2s;
+}
+
+.card-resize-handle:hover,
+.card-resize-handle.dragging {
+  background: var(--bd);
+  opacity: .25;
 }
 
 .customer-card-panel.open {
@@ -2218,6 +2238,8 @@ body.dark .route-search-item:hover {
   .customer-card-panel.open {
     right: 0;
   }
+
+  .card-resize-handle { display: none; }
 
   .card-header {
     padding: 12px 12px 0;

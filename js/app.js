@@ -1212,6 +1212,35 @@ window.CRM = {
 
 /* ── Event bindings ─────────────────────────────────── */
 function bindEvents() {
+  /* ── Card resize drag ──────────────────────────── */
+  const resizeHandle = document.getElementById('cardResizeHandle');
+  const cardPanel = document.getElementById('customerCard');
+  if (resizeHandle) {
+    let dragging = false;
+    resizeHandle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      dragging = true;
+      resizeHandle.classList.add('dragging');
+      cardPanel.style.transition = 'none';
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const w = window.innerWidth - e.clientX;
+      const clamped = Math.max(400, Math.min(w, window.innerWidth * 0.9));
+      cardPanel.style.width = clamped + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      resizeHandle.classList.remove('dragging');
+      cardPanel.style.transition = '';
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+  }
+
   document.getElementById('search').addEventListener('input', e => search(e.target.value));
 
   document.getElementById('homeBtn').addEventListener('click', () => {
