@@ -172,12 +172,33 @@ body {
 
 .sidebar {
   width: 420px;
+  min-width: 320px;
+  max-width: 80vw;
   background: var(--bw);
   border-left: 1px solid var(--bb);
   overflow-y: auto;
   flex-shrink: 0;
   display: none;
   font-size: 12px;
+  position: relative;
+}
+
+.sidebar-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background .2s;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle.dragging {
+  background: var(--bd);
+  opacity: .25;
 }
 
 .sidebar.open {
@@ -2289,6 +2310,7 @@ body.dark .route-search-item:hover {
   }
 
   .card-resize-handle { display: none; }
+  .sidebar-resize-handle { display: none; }
 
   .card-header {
     padding: 12px 12px 0;

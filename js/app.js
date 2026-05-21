@@ -1275,6 +1275,35 @@ function bindEvents() {
     });
   }
 
+  /* ── Sidebar resize drag ─────────────────────────── */
+  const sidebarHandle = document.getElementById('sidebarResizeHandle');
+  const sidebarEl = document.getElementById('sidebar');
+  if (sidebarHandle) {
+    let dragging = false;
+    sidebarHandle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      dragging = true;
+      sidebarHandle.classList.add('dragging');
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!dragging) return;
+      const w = window.innerWidth - e.clientX;
+      const clamped = Math.max(320, Math.min(w, window.innerWidth * 0.8));
+      sidebarEl.style.width = clamped + 'px';
+      invalidateSize();
+    });
+    document.addEventListener('mouseup', () => {
+      if (!dragging) return;
+      dragging = false;
+      sidebarHandle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      invalidateSize();
+    });
+  }
+
   document.getElementById('search').addEventListener('input', e => search(e.target.value));
 
   document.getElementById('homeBtn').addEventListener('click', () => {
