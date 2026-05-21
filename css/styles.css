@@ -886,19 +886,284 @@ body.dark .leaflet-tooltip-top:before {
   padding: 0 24px 24px;
 }
 
+/* ── Card hero ──────────────────────────────────────── */
+
+.card-hero {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--bb);
+}
+
+.card-hero-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card-hero-info { flex: 1; min-width: 0; }
+
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  line-height: 1.2;
+}
+
+.card-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+
+.card-meta {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 20px;
+}
+
+.card-meta-item {
+  font-size: 12px;
+  color: var(--bm);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.card-meta-item a {
+  color: var(--bd);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-meta-item a:hover { text-decoration: underline; }
+
+.card-meta-icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.card-hero-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+/* ── Card tabs ─────────────────────────────────────── */
+
+.card-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--bb);
+  padding: 0 24px;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.card-tab {
+  padding: 10px 16px;
+  font-size: 10px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--bm);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all .2s;
+  font-family: 'Raleway', sans-serif;
+  white-space: nowrap;
+  position: relative;
+}
+
+.card-tab:hover { color: var(--bd); }
+.card-tab.active { color: var(--bd); border-bottom-color: var(--bd); }
+
+.card-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--bb);
+  font-size: 9px;
+  font-weight: 600;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.card-tab-panel { display: none; }
+.card-tab-panel.active { display: block; }
+
+/* ── Card stats (inside Översikt tab) ──────────────── */
+
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--bb);
+  margin-bottom: 20px;
+}
+
+.card-stat {
+  background: var(--bl);
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.card-stat-num {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--bd);
+}
+
+.card-stat-label {
+  font-size: 9px;
+  color: var(--bm);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-top: 3px;
+}
+
+/* ── Card sections ─────────────────────────────────── */
+
+.card-section {
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--bb);
+}
+
+.card-section:last-child { border-bottom: none; }
+
+.card-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.card-section-header h3 {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--bm);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ── Notes block ───────────────────────────────────── */
+
+.card-notes {
+  background: var(--bl);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--bm);
+  font-style: italic;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+/* ── Visit history item ────────────────────────────── */
+
+.card-visit-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bb);
+}
+
+.card-visit-item:last-child { border-bottom: none; }
+
+.card-visit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.card-visit-date {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--bd);
+}
+
+.card-visit-badge {
+  font-size: 10px;
+  color: var(--bm);
+  background: var(--bb);
+  padding: 1px 8px;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.card-visit-contact {
+  font-size: 10px;
+  color: var(--bm);
+  margin-left: 8px;
+}
+
+.card-visit-comment {
+  font-size: 11px;
+  color: var(--bm);
+  margin-top: 4px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+
+/* ── Contact card ──────────────────────────────────── */
+
+.card-contact-item {
+  padding: 10px 12px;
+  background: var(--bl);
+  margin-bottom: 6px;
+}
+
+.card-contact-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.card-contact-role {
+  font-size: 11px;
+  color: var(--bm);
+  margin-top: 1px;
+}
+
+.card-contact-links {
+  margin-top: 6px;
+  font-size: 12px;
+  display: flex;
+  gap: 14px;
+}
+
+.card-contact-links a {
+  color: var(--bd);
+  text-decoration: none;
+}
+
+.card-contact-links a:hover { text-decoration: underline; }
+
+/* ── Legacy compat ─────────────────────────────────── */
+
 .card-top {
   display: flex;
   gap: 16px;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--bb);
   margin-bottom: 16px;
-}
-
-.card-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 20px;
-  font-weight: 500;
-  margin-bottom: 4px;
 }
 
 .card-subtitle {
@@ -918,64 +1183,6 @@ body.dark .leaflet-tooltip-top:before {
 
 .card-link:hover {
   border-color: var(--bd);
-}
-
-.card-status-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .3px;
-}
-
-.card-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.card-stat {
-  background: var(--bl);
-  padding: 10px 6px;
-  text-align: center;
-}
-
-.card-stat-num {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--bd);
-}
-
-.card-stat-label {
-  font-size: 9px;
-  color: var(--bm);
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  margin-top: 2px;
-}
-
-.card-section {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--bb);
-}
-
-.card-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.card-section-header h3 {
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--bm);
-  font-weight: 500;
-  margin: 0;
 }
 
 .card-input {
@@ -1701,6 +1908,36 @@ body.dark .card-stat {
   background: #2a2b2d;
 }
 
+body.dark .card-hero {
+  border-bottom-color: #444;
+}
+
+body.dark .card-tabs {
+  border-bottom-color: #444;
+}
+
+body.dark .card-tab.active {
+  color: #f2f2f2;
+  border-bottom-color: #f2f2f2;
+}
+
+body.dark .card-tab:hover {
+  color: #f2f2f2;
+}
+
+body.dark .card-notes {
+  background: #2a2b2d;
+  color: #aaa;
+}
+
+body.dark .card-contact-item {
+  background: #2a2b2d;
+}
+
+body.dark .card-visit-badge {
+  background: #3a3b3d;
+}
+
 body.dark .card-contact {
   background: #2a2b2d;
 }
@@ -2002,6 +2239,25 @@ body.dark .route-search-item:hover {
 
   .card-body {
     padding: 0 16px 16px;
+  }
+
+  .card-hero {
+    padding: 16px 16px 12px;
+  }
+
+  .card-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .card-tabs {
+    padding: 0 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .card-tab {
+    padding: 10px 12px;
+    font-size: 9px;
   }
 
   .card-stats {
