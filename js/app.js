@@ -722,9 +722,9 @@ async function renderCard(customerId) {
 
       <div class="card-section">
         <div class="card-section-header"><h3>Registrera besök</h3></div>
-        <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <div class="card-form-row">
           <input id="cardVisitDate" type="date" class="card-input" value="${today}" style="width:140px;">
-          <select id="cardVisitType" class="card-input" style="width:120px;">
+          <select id="cardVisitType" class="card-input" style="width:140px;">
             <option value="physical">Fysiskt besök</option>
             <option value="phone">Telefon</option>
             <option value="video">Teams/Video</option>
@@ -732,25 +732,24 @@ async function renderCard(customerId) {
           </select>
           <input id="cardVisitContact" class="card-input" placeholder="Kontaktperson" style="flex:1;min-width:120px;">
         </div>
-        <div style="margin-bottom:8px;">
-          <textarea id="cardVisitComment" class="card-input" placeholder="Anteckningar — vad diskuterades, resultat, nästa steg..." rows="3" style="width:100%;resize:vertical;font-family:'Raleway',sans-serif;"></textarea>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;">
-          <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')">Registrera besök</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <label style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--bm);white-space:nowrap;margin:0;">Nästa besök:</label>
+        <textarea id="cardVisitComment" class="card-input" placeholder="Anteckningar — vad diskuterades, resultat, nästa steg..." rows="3" style="width:100%;resize:vertical;font-family:'Raleway',sans-serif;margin-bottom:10px;"></textarea>
+        <button class="card-action-btn" onclick="CRM.cardRegisterVisit('${c.id}')">Registrera besök</button>
+      </div>
+
+      <div class="card-section">
+        <div class="card-section-header"><h3>Nästa besök</h3></div>
+        <div class="card-form-row">
           <input id="cardNextVisit" type="date" class="card-input" value="${nvDate}" style="flex:1;min-width:110px;">
-          <input id="cardNextVisitTime" type="time" class="card-input" value="09:00" style="width:90px;">
-          <button class="card-add-btn" onclick="CRM.cardSetNextVisit('${c.id}')" style="white-space:nowrap;">${nvDate ? 'Uppdatera' : 'Planera'}</button>
-          ${nvDate ? `<button class="ics-btn" onclick="CRM.openOutlookNextVisit('${c.id}')" title="Öppna i Outlook">📅</button>` : ''}
-          ${nvDate ? `<button class="route-stop-remove" onclick="CRM.cardRemoveNextVisit('${c.id}')" title="Ta bort">&#x2715;</button>` : ''}
+          <input id="cardNextVisitTime" type="time" class="card-input" value="09:00" style="width:100px;">
+          <button class="card-action-btn" onclick="CRM.cardSetNextVisit('${c.id}')">${nvDate ? 'Uppdatera' : 'Planera'}</button>
+          ${nvDate ? `<button class="card-icon-btn" onclick="CRM.openOutlookNextVisit('${c.id}')" title="Öppna i Outlook">📅</button>` : ''}
+          ${nvDate ? `<button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardRemoveNextVisit('${c.id}')" title="Ta bort">&#x2715;</button>` : ''}
         </div>
       </div>
 
       <div class="card-section">
         <div class="card-section-header"><h3>Att göra</h3></div>
-        <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <div class="card-form-row">
           <input id="cardTodoText" class="card-input" placeholder="Ny uppgift..." style="flex:1;">
           <button class="card-action-btn" onclick="CRM.cardAddTodo('${c.id}')">Lägg till</button>
         </div>
@@ -758,20 +757,23 @@ async function renderCard(customerId) {
           <div class="todo-item ${t.done ? 'done' : ''}">
             <input type="checkbox" ${t.done ? 'checked' : ''} onchange="CRM.cardToggleTodo('${t.id}', this.checked, '${c.id}')">
             <span class="todo-text">${t.text}</span>
-            <button class="route-stop-remove" onclick="CRM.cardDeleteTodo('${t.id}','${c.id}')">&#x2715;</button>
+            <button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteTodo('${t.id}','${c.id}')">&#x2715;</button>
           </div>
-        `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga uppgifter</p>'}
+        `).join('') : '<p class="card-empty-text">Inga uppgifter</p>'}
       </div>
 
       <div class="card-section">
         <div class="card-section-header"><h3>Kommentarer</h3></div>
-        <div style="display:flex;gap:8px;margin-bottom:10px;"><input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;"><button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button></div>
+        <div class="card-form-row">
+          <input id="cardCommentText" class="card-input" placeholder="Skriv en kommentar..." style="flex:1;">
+          <button class="card-action-btn" onclick="CRM.cardAddComment('${c.id}')">Lägg till</button>
+        </div>
         ${comments.length ? comments.map(cm => `
-          <div style="padding:6px 0;border-bottom:1px solid var(--bb);">
-            <div style="display:flex;justify-content:space-between;"><span style="font-size:12px;">${cm.body || cm.text}</span><button onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button></div>
-            <p style="font-size:10px;color:var(--bm);margin-top:2px;">${formatDate(cm.created_at)}</p>
+          <div class="card-list-row">
+            <div style="flex:1;"><span style="font-size:12px;">${cm.body || cm.text}</span><p style="font-size:10px;color:var(--bm);margin-top:2px;">${formatDate(cm.created_at)}</p></div>
+            <button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteComment('${cm.id}','${c.id}')">&#x2715;</button>
           </div>
-        `).join('') : '<p style="font-size:12px;color:var(--bm);">Inga kommentarer</p>'}
+        `).join('') : '<p class="card-empty-text">Inga kommentarer</p>'}
       </div>
     </div>
   `;
@@ -790,7 +792,7 @@ async function renderCard(customerId) {
               ${v.contact_person ? `<span class="card-visit-contact">👤 ${v.contact_person}</span>` : ''}
               ${vProf && vProf.id !== getProfile().id ? `<span class="card-visit-contact">— ${vProf.display_name}</span>` : ''}
             </div>
-            ${v.user_id === getProfile().id || hasRole('admin') ? `<button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;flex:none;">Ta bort</button>` : ''}
+            ${v.user_id === getProfile().id || hasRole('admin') ? `<button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')">Ta bort</button>` : ''}
           </div>
           ${v.comment ? `<p class="card-visit-comment">${v.comment}</p>` : ''}
         </div>`;
@@ -819,7 +821,7 @@ async function renderCard(customerId) {
               <div class="card-contact-name">${ct.name || ct.person_name}${ct.is_primary ? '<span style="font-size:9px;background:var(--bd);color:var(--bl);padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.5px;">Primär</span>' : ''}</div>
               ${ct.role ? `<div class="card-contact-role">${ct.role}</div>` : ''}
             </div>
-            <button onclick="CRM.cardDeleteContact('${ct.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;">Ta bort</button>
+            <button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteContact('${ct.id}','${c.id}')">Ta bort</button>
           </div>
           <div class="card-contact-links">
             ${ct.phone ? `<a href="tel:${ct.phone}">📞 ${ct.phone}</a>` : ''}
@@ -860,7 +862,7 @@ async function renderCard(customerId) {
               <tr style="border-bottom:1px solid var(--bb);">
                 <td style="padding:6px 0;">${r.month ? mNames[r.month] + ' ' : ''}${r.year}</td>
                 <td style="text-align:right;padding:6px 0;">${formatSEK(r.amount)}</td>
-                <td style="text-align:right;"><button onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px;">Ta bort</button></td>
+                <td style="text-align:right;"><button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteRevenue('${r.id}','${c.id}')">Ta bort</button></td>
               </tr>
             `).join('')}
           </table>
