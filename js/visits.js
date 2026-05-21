@@ -44,6 +44,18 @@ export async function registerVisit(customerId, userId, comment, visitedAt, visi
   return data;
 }
 
+/* Update a visit */
+export async function updateVisit(id, fields) {
+  const { data, error } = await sb
+    .from('visits')
+    .update(fields)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
 /* Delete a visit */
 export async function deleteVisit(id) {
   const { error } = await sb.from('visits').delete().eq('id', id);

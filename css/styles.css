@@ -1143,6 +1143,12 @@ body.dark .leaflet-tooltip-top:before {
   line-height: 1.4;
 }
 
+.card-visit-edit {
+  border-top: 1px solid var(--bb);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
 /* ── Contact card ──────────────────────────────────── */
 
 .card-contact-item {

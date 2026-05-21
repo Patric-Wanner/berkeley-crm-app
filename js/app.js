@@ -7,7 +7,7 @@ import { sb } from './supabase-client.js';
 import { requireAuth, logout, onAuthChange } from './auth.js';
 import { loadProfile, getProfile, getRole, hasRole, fetchAllProfiles } from './role.js';
 import { fetchCustomers, createCustomer, updateCustomer, deleteCustomer, reassignCustomers } from './customers.js';
-import { fetchAllVisits, fetchVisits, registerVisit, deleteVisit } from './visits.js';
+import { fetchAllVisits, fetchVisits, registerVisit, updateVisit, deleteVisit } from './visits.js';
 import { addComment, deleteComment, fetchComments } from './comments.js';
 import { upsertRevenue, deleteRevenue, fetchRevenue, fetchAllRevenue } from './revenue.js';
 import { fetchContacts, addContact, updateContact, deleteContact } from './contacts.js';
@@ -784,7 +784,9 @@ async function renderCard(customerId) {
       ${visits.length ? visits.slice(0, 30).map(v => {
         const tl = typeLabels[v.visit_type] || typeLabels.physical;
         const vProf = profiles.find(p => p.id === v.user_id);
-        return `<div class="card-visit-item">
+        const canEdit = v.user_id === getProfile().id || hasRole('admin');
+        const escapedComment = (v.comment || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        return `<div class="card-visit-item" id="visit-${v.id}">
           <div class="card-visit-row">
             <div style="flex:1;">
               <span class="card-visit-date">${formatDate(v.visited_at)}</span>
@@ -792,9 +794,19 @@ async function renderCard(customerId) {
               ${v.contact_person ? `<span class="card-visit-contact">👤 ${v.contact_person}</span>` : ''}
               ${vProf && vProf.id !== getProfile().id ? `<span class="card-visit-contact">— ${vProf.display_name}</span>` : ''}
             </div>
-            ${v.user_id === getProfile().id || hasRole('admin') ? `<button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')">Ta bort</button>` : ''}
+            <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+              ${canEdit ? `<button class="card-icon-btn" onclick="CRM.cardEditVisit('${v.id}','${c.id}')" title="Redigera">✏️</button>` : ''}
+              ${canEdit ? `<button class="card-icon-btn card-icon-btn--danger" onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')">Ta bort</button>` : ''}
+            </div>
           </div>
-          ${v.comment ? `<p class="card-visit-comment">${v.comment}</p>` : ''}
+          ${v.comment ? `<p class="card-visit-comment">${v.comment}</p>` : `<p class="card-empty-text" style="margin-top:4px;cursor:pointer;" onclick="CRM.cardEditVisit('${v.id}','${c.id}')">+ Lägg till anteckning...</p>`}
+          <div id="visitEdit-${v.id}" class="card-visit-edit" style="display:none;">
+            <textarea class="card-input" id="visitEditComment-${v.id}" rows="3" style="width:100%;resize:vertical;font-family:'Raleway',sans-serif;margin-top:8px;">${escapedComment}</textarea>
+            <div class="card-form-row" style="margin-top:8px;margin-bottom:0;">
+              <button class="card-action-btn" onclick="CRM.cardSaveVisit('${v.id}','${c.id}')">Spara</button>
+              <button class="card-icon-btn" onclick="CRM.cardCancelEditVisit('${v.id}')">Avbryt</button>
+            </div>
+          </div>
         </div>`;
       }).join('') : '<p style="font-size:12px;color:var(--bm);padding:16px 0;">Inga besök registrerade</p>'}
     </div>
@@ -974,6 +986,26 @@ window.CRM = {
     await refreshAll(); await renderCard(cid);
   },
   async cardDeleteVisit(vid, cid) { await deleteVisit(vid); await refreshAll(); await renderCard(cid); },
+  cardEditVisit(vid) {
+    const editDiv = document.getElementById('visitEdit-' + vid);
+    if (!editDiv) return;
+    const isOpen = editDiv.style.display !== 'none';
+    document.querySelectorAll('.card-visit-edit').forEach(el => el.style.display = 'none');
+    if (!isOpen) { editDiv.style.display = 'block'; document.getElementById('visitEditComment-' + vid)?.focus(); }
+  },
+  cardCancelEditVisit(vid) {
+    const editDiv = document.getElementById('visitEdit-' + vid);
+    if (editDiv) editDiv.style.display = 'none';
+  },
+  async cardSaveVisit(vid, cid) {
+    const comment = document.getElementById('visitEditComment-' + vid)?.value.trim() || '';
+    await updateVisit(vid, { comment: comment || null });
+    await refreshAll(); await renderCard(cid);
+    setTimeout(() => {
+      const tab = document.querySelector('[data-tab="visits"]');
+      if (tab) tab.click();
+    }, 50);
+  },
   async cardSetNextVisit(cid) { const d = document.getElementById('cardNextVisit')?.value; if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
   async cardRemoveNextVisit(cid) { await removeNextVisit(cid); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); await renderCard(cid); },
   async dashChangeNextVisit(cid, d) { if (!d) return; await setNextVisit(cid, d); try { nextVisitsCache = await fetchNextVisits(); } catch {} updatePlannedVisits(); },
