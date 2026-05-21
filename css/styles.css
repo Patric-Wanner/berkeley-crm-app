@@ -175,7 +175,7 @@ body {
   min-width: 320px;
   max-width: 80vw;
   background: var(--bw);
-  border-left: 1px solid var(--bb);
+  border-right: 1px solid var(--bb);
   overflow-y: auto;
   flex-shrink: 0;
   display: none;
@@ -183,12 +183,11 @@ body {
 }
 
 .sidebar-resize-handle {
-  width: 6px;
+  width: 4px;
   cursor: col-resize;
   flex-shrink: 0;
   display: none;
   background: transparent;
-  transition: background .15s;
 }
 
 .sidebar-resize-handle.visible {
@@ -197,8 +196,7 @@ body {
 
 .sidebar-resize-handle:hover,
 .sidebar-resize-handle.dragging {
-  background: var(--bd);
-  opacity: .25;
+  background: rgba(255,255,255,.15);
 }
 
 .sidebar.open {
