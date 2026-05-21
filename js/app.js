@@ -969,9 +969,14 @@ window.CRM = {
     document.getElementById('cardTabs').innerHTML = '';
     document.getElementById('cardContent').innerHTML = '<p style="padding:40px;text-align:center;color:var(--bm);">Laddar...</p>';
     const sidebar = document.getElementById('sidebar');
-    if (sidebar.classList.contains('open')) { sidebar.classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); sidebarHandle?.classList.remove('visible'); invalidateSize(); }
+    if (sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+      document.getElementById('dashBtn').classList.remove('active');
+      document.getElementById('sidebarResizeHandle')?.classList.remove('visible');
+      invalidateSize();
+    }
     getMapInstance()?.closePopup();
-    await renderCard(customerId);
+    try { await renderCard(customerId); } catch (e) { console.error('renderCard error:', e); }
   },
 
   closeCard() { document.getElementById('customerCard').classList.remove('open'); document.getElementById('cardOverlay').classList.remove('open'); },
