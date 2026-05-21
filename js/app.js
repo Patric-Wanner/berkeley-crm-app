@@ -755,7 +755,7 @@ async function renderCard(customerId) {
               </div>
               ${v.comment ? `<p style="font-size:11px;color:var(--bm);margin-top:4px;white-space:pre-wrap;">${v.comment}</p>` : ''}
             </div>
-            <button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;flex:none;">Ta bort</button>
+            ${v.user_id === getProfile().id || hasRole('admin') ? `<button onclick="CRM.cardDeleteVisit('${v.id}','${c.id}')" style="background:none;border:none;color:#E74C3C;cursor:pointer;font-size:11px;padding:4px 8px;flex:none;">Ta bort</button>` : ''}
           </div>
         </div>`;
       }).join('') : '<p style="font-size:12px;color:var(--bm);">Inga besök registrerade</p>'}
