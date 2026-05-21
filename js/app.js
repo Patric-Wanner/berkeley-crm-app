@@ -969,7 +969,7 @@ window.CRM = {
     document.getElementById('cardTabs').innerHTML = '';
     document.getElementById('cardContent').innerHTML = '<p style="padding:40px;text-align:center;color:var(--bm);">Laddar...</p>';
     const sidebar = document.getElementById('sidebar');
-    if (sidebar.classList.contains('open')) { sidebar.classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); invalidateSize(); }
+    if (sidebar.classList.contains('open')) { sidebar.classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); sidebarHandle?.classList.remove('visible'); invalidateSize(); }
     getMapInstance()?.closePopup();
     await renderCard(customerId);
   },
@@ -1278,25 +1278,25 @@ function bindEvents() {
   /* ── Sidebar resize drag ─────────────────────────── */
   const sidebarHandle = document.getElementById('sidebarResizeHandle');
   const sidebarEl = document.getElementById('sidebar');
-  if (sidebarHandle) {
-    let dragging = false;
+  if (sidebarHandle && sidebarEl) {
+    let sbDragging = false;
     sidebarHandle.addEventListener('mousedown', e => {
       e.preventDefault();
-      dragging = true;
+      sbDragging = true;
       sidebarHandle.classList.add('dragging');
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     });
     document.addEventListener('mousemove', e => {
-      if (!dragging) return;
+      if (!sbDragging) return;
       const w = window.innerWidth - e.clientX;
       const clamped = Math.max(320, Math.min(w, window.innerWidth * 0.8));
       sidebarEl.style.width = clamped + 'px';
       invalidateSize();
     });
     document.addEventListener('mouseup', () => {
-      if (!dragging) return;
-      dragging = false;
+      if (!sbDragging) return;
+      sbDragging = false;
       sidebarHandle.classList.remove('dragging');
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -1313,10 +1313,12 @@ function bindEvents() {
   });
 
   document.getElementById('dashBtn').addEventListener('click', () => {
-    const sb = document.getElementById('sidebar'); sb.classList.toggle('open'); document.getElementById('dashBtn').classList.toggle('active'); invalidateSize();
+    const sb = document.getElementById('sidebar'); sb.classList.toggle('open'); document.getElementById('dashBtn').classList.toggle('active');
+    sidebarHandle?.classList.toggle('visible', sb.classList.contains('open'));
+    invalidateSize();
   });
 
-  const closeSidebar = () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); invalidateSize(); };
+  const closeSidebar = () => { document.getElementById('sidebar').classList.remove('open'); document.getElementById('dashBtn').classList.remove('active'); sidebarHandle?.classList.remove('visible'); invalidateSize(); };
   document.getElementById('sidebarCloseBtn').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); closeSidebar(); });
   document.getElementById('sidebarBackdrop').addEventListener('click', closeSidebar);
 
