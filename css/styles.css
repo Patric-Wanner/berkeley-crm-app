@@ -175,7 +175,6 @@ body {
   min-width: 320px;
   max-width: 80vw;
   background: var(--bw);
-  border-right: 1px solid var(--bb);
   overflow-y: auto;
   flex-shrink: 0;
   display: none;
