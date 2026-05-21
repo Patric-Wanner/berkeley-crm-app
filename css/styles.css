@@ -2191,14 +2191,13 @@ body.dark .route-search-item:hover {
   .sidebar {
     width: 100%;
     position: fixed;
-    bottom: 0;
+    top: 0;
     left: 0;
-    height: 70vh;
+    height: 100vh;
     z-index: 10002;
     border-left: none;
-    border-top: 1px solid var(--bb);
-    border-radius: 12px 12px 0 0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, .15);
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
   }
 
