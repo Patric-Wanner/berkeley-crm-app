@@ -844,8 +844,8 @@ body.dark .leaflet-tooltip-top:before {
 
 .customer-card-panel {
   position: fixed;
-  top: 0; right: -480px;
-  width: 460px;
+  top: 0; right: -560px;
+  width: 540px;
   height: 100vh;
   background: var(--bw);
   z-index: 10002;
