@@ -176,18 +176,23 @@ body {
   max-width: 80vw;
   background: var(--bw);
   border-left: 1px solid var(--bb);
-  overflow-y: auto;
+  overflow: hidden;
   flex-shrink: 0;
   display: none;
   font-size: 12px;
   position: relative;
 }
 
+.sidebar-scroll {
+  overflow-y: auto;
+  height: 100%;
+}
+
 .sidebar-resize-handle {
   position: absolute;
   left: 0;
   top: 0;
-  width: 5px;
+  width: 6px;
   height: 100%;
   cursor: col-resize;
   z-index: 10;
