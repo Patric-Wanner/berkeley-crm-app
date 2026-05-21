@@ -1289,7 +1289,7 @@ function bindEvents() {
     });
     document.addEventListener('mousemove', e => {
       if (!sbDragging) return;
-      const w = window.innerWidth - e.clientX;
+      const w = e.clientX;
       const clamped = Math.max(320, Math.min(w, window.innerWidth * 0.8));
       sidebarEl.style.width = clamped + 'px';
       invalidateSize();
