@@ -1,0 +1,25 @@
+name: Keep Supabase awake
+
+# Supabase pauses free projects after 7 days without activity.
+# Ping the database twice a week so the CRM stays reachable.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase
+        run: |
+          URL=$(grep -oP "SUPABASE_URL\s*=\s*'\K[^']+" js/config.js)
+          KEY=$(grep -oP "SUPABASE_ANON\s*=\s*'\K[^']+" js/config.js)
+          curl -fsS -o /dev/null -w "HTTP %{http_code}\n" \
+            "$URL/rest/v1/customers?select=id&limit=1" \
+            -H "apikey: $KEY"
