@@ -26,11 +26,12 @@ const hqIcon = L.divIcon({
 export function initMap() {
   map = L.map('map').setView(MAP_CENTER, MAP_ZOOM);
 
-  lightTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  lightTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap', maxZoom: 18
   });
-  darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 18
+  /* Same OSM tiles, inverted via CSS (.tiles-dark) — CARTO dark tiles now require an API key */
+  darkTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap', maxZoom: 18, className: 'tiles-dark'
   });
   lightTiles.addTo(map);
 

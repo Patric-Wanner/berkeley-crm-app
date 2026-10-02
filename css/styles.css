@@ -1947,6 +1947,35 @@ body.dark .popup-select {
   background: #2a2b2d;
   color: #f2f2f2;
   border-color: #444;
+  color-scheme: dark;
+}
+
+.tiles-dark {
+  filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.85) saturate(.4);
+}
+
+body.dark .leaflet-bar a {
+  background: #1c1d1f;
+  color: #f2f2f2;
+  border-bottom-color: #444;
+}
+
+body.dark .leaflet-bar a:hover {
+  background: #2a2b2d;
+}
+
+body.dark .leaflet-bar a.leaflet-disabled {
+  background: #1c1d1f;
+  color: #555;
+}
+
+body.dark .leaflet-control-attribution {
+  background: rgba(28, 29, 31, .8);
+  color: #888;
+}
+
+body.dark .leaflet-control-attribution a {
+  color: #bbb;
 }
 
 body.dark .modal {

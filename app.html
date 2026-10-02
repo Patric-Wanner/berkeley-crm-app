@@ -40,7 +40,7 @@
       <img src="https://cdn.berkeleycompany.com/preset:sharp/resize:fit:1700:0:0/width:1700/quality:70/gravity:sm/plain/https://api.berkeleycompany.com/storage/berkeley/logo/berkeley-logo-symbol.png" alt="Berkeley">
       <h1>Berkeley CRM</h1>
     </div>
-    <input type="text" id="search" placeholder="Sök kund...">
+    <input type="text" id="search" placeholder="Sök kund..." autocomplete="off">
     <button class="hbtn" id="addCustBtn">+ Ny kund</button>
     <button class="hbtn" id="dashBtn">Dashboard</button>
     <button class="hbtn" id="routeBtn">Rutt</button>
@@ -258,9 +258,9 @@
       <h3>Byt lösenord</h3>
       <div style="margin-top:16px;">
         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--bm);display:block;margin-bottom:4px;">Nytt lösenord</label>
-        <input id="newPw" type="password" class="card-input" placeholder="Minst 6 tecken" style="margin-bottom:12px;">
+        <input id="newPw" type="password" autocomplete="new-password" class="card-input" placeholder="Minst 6 tecken" style="margin-bottom:12px;">
         <label style="font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--bm);display:block;margin-bottom:4px;">Bekräfta lösenord</label>
-        <input id="confirmPw" type="password" class="card-input" placeholder="Upprepa lösenord" style="margin-bottom:12px;">
+        <input id="confirmPw" type="password" autocomplete="new-password" class="card-input" placeholder="Upprepa lösenord" style="margin-bottom:12px;">
         <div id="changePwMsg" style="display:none;font-size:12px;margin-bottom:10px;"></div>
         <div style="display:flex;gap:8px;">
           <button class="popup-btn" id="changePwSave" style="flex:1;">Spara</button>
