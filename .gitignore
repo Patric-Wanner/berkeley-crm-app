@@ -1,0 +1,7 @@
+# Local tooling
+.claude/
+
+# Customer data — never commit (kept in ../kunddata)
+sql/import-*.sql
+*.csv
+*.xlsx

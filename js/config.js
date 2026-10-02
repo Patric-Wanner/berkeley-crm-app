@@ -4,8 +4,6 @@
  *
  * The anon key is safe to expose — Row Level Security
  * enforces all access rules server-side.
- *
- * TODO: Replace with your actual Supabase project values.
  */
 
 export const SUPABASE_URL  = 'https://ippgjswlbmypzzhqqksv.supabase.co';
